@@ -1,0 +1,24 @@
+{
+  "blocks": [
+    {
+      "random": 9,
+      "block": "minecraft:cracked_stone_bricks"
+    },
+    {
+      "random": 8,
+      "block": "minecraft:mossy_stone_bricks"
+    },
+    {
+      "random": 5,
+      "block": "minecraft:stone_brick_stairs"
+    },
+    {
+      "random": 15,
+      "block": "minecraft:stone_brick_slab"
+    },
+    {
+      "random": 1000,
+      "block": "minecraft:stone_bricks"
+    }
+  ]
+}

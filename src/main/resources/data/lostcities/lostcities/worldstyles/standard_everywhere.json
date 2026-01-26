@@ -1,0 +1,65 @@
+{
+  "outsidestyle": "outside",
+  "multisettings": {
+    "areasize": 10,
+    "minimum": 1,
+    "maximum": 5
+  },
+  "scattered": {
+    "areasize": 8,
+    "chance": 0.1,
+    "weightnone": 20,
+    "list": [
+      {
+        "name": "radiotower",
+        "weight": 15,
+        "maxheightdiff": 3,
+        "biomes": {
+          "excluding": [
+            "#minecraft:is_ocean",
+            "#minecraft:is_river",
+            "#minecraft:is_beach"
+          ]
+        }
+      },
+      {
+        "name": "oilrig",
+        "weight": 1,
+        "maxheightdiff": 100,
+        "biomes": {
+          "if_any": [
+            "#minecraft:is_deep_ocean"
+          ]
+        }
+      },
+      {
+        "name": "cabin",
+        "weight": 10,
+        "maxheightdiff": 2,
+        "biomes": {
+          "excluding": [
+            "#minecraft:is_ocean",
+            "#minecraft:is_river",
+            "#minecraft:is_beach"
+          ]
+        }
+      }
+    ]
+  },
+  "citystyles": [
+    {
+      "factor": 0.5,
+      "citystyle": "citystyle_standard"
+    },
+    {
+      "factor": 9.0,
+      "biomes": {
+        "if_any": [
+          "minecraft:desert",
+          "minecraft:badlands"
+        ]
+      },
+      "citystyle": "citystyle_desert"
+    }
+  ]
+}

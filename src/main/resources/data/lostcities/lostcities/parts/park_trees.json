@@ -1,0 +1,67 @@
+{
+  "xsize": 16,
+  "zsize": 16,
+  "palette": {
+    "palette": [
+      {
+        "char": "P",
+        "blocks": [
+          {
+            "random": 32,
+            "block": "minecraft:oak_sapling[stage=1]"
+          },
+          {
+            "random": 32,
+            "block": "minecraft:spruce_sapling[stage=1]"
+          },
+          {
+            "random": 32,
+            "block": "minecraft:birch_sapling[stage=1]"
+          },
+          {
+            "random": 1000,
+            "block": "minecraft:acacia_sapling[stage=1]"
+          }
+        ]
+      }
+    ]
+  },
+  "slices": [
+    [
+      "                ",
+      "                ",
+      "  _____  _____  ",
+      "  _SSS_  _SSS_  ",
+      "  _SDS_  _SDS_  ",
+      "  _SSS_  _SSS_  ",
+      "  _____  _____  ",
+      "                ",
+      "                ",
+      "  _____  _____  ",
+      "  _SSS_  _SSS_  ",
+      "  _SDS_  _SDS_  ",
+      "  _SSS_  _SSS_  ",
+      "  _____  _____  ",
+      "                ",
+      "                "
+    ],
+    [
+      "                ",
+      "                ",
+      "                ",
+      "                ",
+      "   TP      PT   ",
+      "                ",
+      "                ",
+      "                ",
+      "                ",
+      "                ",
+      "                ",
+      "   TP      PT   ",
+      "                ",
+      "                ",
+      "                ",
+      "                "
+    ]
+  ]
+}

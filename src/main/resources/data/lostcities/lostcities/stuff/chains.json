@@ -1,0 +1,13 @@
+{
+  "tags": ["rubble"],
+  "column": "{",
+  "mincount": 5,
+  "maxcount": 10,
+  "attempts": 8,
+  "inbuilding": true,
+  "upperblocks": {
+    "excluding": [
+      "minecraft:air"
+    ]
+  }
+}
