@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import com.lostcity.util.QualityRandom;
 
 /**
  * Информация о чанке: городской ли, есть ли здание, тип здания, этажи, улицы, связи.
@@ -69,6 +70,10 @@ public class BuildingInfo {
     public final boolean xBridge;
     /** Флаг: может ли быть Z-мост в этом чанке. Оригинал: zBridge. */
     public final boolean zBridge;
+    /** A boolean indicating that this chunk is a candidate for holding a corridor (no guarantee) */
+    public final boolean xRailCorridor;
+    /** A boolean indicating that this chunk is a candidate for holding a corridor (no guarantee) */
+    public final boolean zRailCorridor;
     /** Тип части X-моста (если есть). Оригинал: xBridgeType. */
     private BuildingPart xBridgeType;
     /** Флаг: рассчитан ли xBridgeType. Оригинал: xBridgeTypeCalculated. */
@@ -98,7 +103,7 @@ public class BuildingInfo {
     /** Кеш для desiredMaxHeightL2. Оригинал: desiredTerrainCorrectionHeights. */
     private MinMax desiredTerrainCorrectionHeights = null;
 
-    private static final int FLOOR_HEIGHT = 6;
+    public static final int FLOOR_HEIGHT = 6;
     private static final String[] FRONT_PARTS = { "lostcities:building_front1", "lostcities:building_front2", "lostcities:building_front3" };
     private static final String[] STAIR_PARTS = { "lostcities:stairs1", "lostcities:stairs2", "lostcities:stairsnormal", "lostcities:stairsbig" };
 
@@ -135,6 +140,7 @@ public class BuildingInfo {
                          String stairType, float stairPriority,
                          int highwayXLevel, int highwayZLevel,
                          boolean xBridge, boolean zBridge, BuildingPart bridgeType,
+                         boolean xRailCorridor, boolean zRailCorridor,
                          String selectedBricksPalette, String selectedGlassPalette, String selectedGlassSidePalette,
                          net.minecraft.block.Block doorBlock) {
         this.chunkPos = chunkPos;
@@ -158,6 +164,8 @@ public class BuildingInfo {
         this.highwayZLevel = highwayZLevel;
         this.xBridge = xBridge;
         this.zBridge = zBridge;
+        this.xRailCorridor = xRailCorridor;
+        this.zRailCorridor = zRailCorridor;
         this.bridgeType = bridgeType;
         this.selectedBricksPalette = selectedBricksPalette;
         this.selectedGlassPalette = selectedGlassPalette;
@@ -211,7 +219,7 @@ public class BuildingInfo {
             int cityLevel = ChunkHeightmap.getCityLevel(pos, profile, world);
             return new BuildingInfo(pos, config, false, false, null, 0, 0,
                     ground, cityLevel, StreetType.NORMAL, null, null, null, MultiPos.SINGLE, null, null, 0.0f, -1, -1,
-                    false, false, null, null, null, null, null);
+                    false, false, null, false, false, null, null, null, null);
         }
         
         // Помечаем чанк как вычисляемый
@@ -325,7 +333,7 @@ public class BuildingInfo {
                 }
                 BuildingInfo info = new BuildingInfo(pos, config, false, false, null, 0, 0,
                         ground, cityLevel, null, null, null, null, MultiPos.SINGLE, null, null, 0f, hx, hz,
-                        xBridge, zBridge, bridgePart, null, null, null, null);
+                        xBridge, zBridge, bridgePart, false, false, null, null, null, null);
                 // КРИТИЧНО: Кэшируем ТОЛЬКО если world != null (иначе multibuilding информация неполная!)
                 if (world != null) {
                     CACHE.put(pos, info);
@@ -333,7 +341,9 @@ public class BuildingInfo {
                 return info;
             }
 
-            Random rand = new Random(pos.x * 341873128712L + pos.z * 132897987541L);
+            // ВАЖНО: Сид должен совпадать с Forge 1:1 для идентичной генерации
+            long seed = world != null ? world.getSeed() : 0;
+            QualityRandom rand = new QualityRandom(seed + pos.z * 341873128712L + pos.x * 132897987541L);
             
             // Этап 2.3: Улучшенная логика проверки возможности генерации здания
             // Оригинал: checkBuildingPossibility()
@@ -366,7 +376,7 @@ public class BuildingInfo {
                 float priority = rand.nextFloat();
                 BuildingInfo info = new BuildingInfo(pos, config, true, false, null, 0, 0,
                         ground, cityLevel, st, null, null, null, MultiPos.SINGLE, null, stair, priority, hx, hz,
-                        false, false, null, null, null, null, null);
+                        false, false, null, false, false, null, null, null, null);
                 // КРИТИЧНО: Кэшируем ТОЛЬКО если !skipMultiChunk И world != null
                 if (!skipMultiChunk && world != null) {
                     CACHE.put(pos, info);
@@ -377,9 +387,12 @@ public class BuildingInfo {
             Map<String, Building> allBuildings = AssetRegistries.getBuildings();
             if (allBuildings.isEmpty()) {
                 ModLogger.warn("No buildings loaded! Assets not loaded?");
+                float corridorChance = profile.getCorridorChance();
+                boolean xrc = rand.nextFloat() < corridorChance;
+                boolean zrc = rand.nextFloat() < corridorChance;
                 BuildingInfo info = new BuildingInfo(pos, config, true, false, null, 0, 0,
                         ground, cityLevel, null, null, null, null, MultiPos.SINGLE, null, null, 0f, hx, hz,
-                        false, false, null, null, null, null, null);
+                        false, false, null, xrc, zrc, null, null, null, null);
                 // КРИТИЧНО: Кэшируем ТОЛЬКО если !skipMultiChunk И world != null
                 if (!skipMultiChunk && world != null) {
                     CACHE.put(pos, info);
@@ -485,9 +498,12 @@ public class BuildingInfo {
                     StreetType st = rand.nextFloat() < 0.1f ? StreetType.PARK : StreetType.values()[rand.nextInt(StreetType.values().length - 1)];
                     String stair = STAIR_PARTS[rand.nextInt(STAIR_PARTS.length)];
                     float priority = rand.nextFloat();
+                    float corridorChance = profile.getCorridorChance();
+                    boolean xrc = rand.nextFloat() < corridorChance;
+                    boolean zrc = rand.nextFloat() < corridorChance;
                     BuildingInfo info = new BuildingInfo(pos, config, true, false, null, 0, 0,
                             ground, cityLevel, st, null, null, null, MultiPos.SINGLE, null, stair, priority, hx, hz,
-                            false, false, null, null, null, null, null);
+                            false, false, null, xrc, zrc, null, null, null, null);
                     if (!skipMultiChunk && world != null) {
                         CACHE.put(pos, info);
                     }
@@ -505,9 +521,12 @@ public class BuildingInfo {
                     ModLogger.error("Available buildings: {}", allBuildings.keySet());
                 }
                 
+                float corridorChance = profile.getCorridorChance();
+                boolean xrc = rand.nextFloat() < corridorChance;
+                boolean zrc = rand.nextFloat() < corridorChance;
                 BuildingInfo info = new BuildingInfo(pos, config, true, false, null, 0, 0,
                         ground, cityLevel, null, null, null, null, MultiPos.SINGLE, null, null, 0f, hx, hz,
-                        false, false, null, null, null, null, null);
+                        false, false, null, xrc, zrc, null, null, null, null);
                 // КРИТИЧНО: Кэшируем ТОЛЬКО если !skipMultiChunk И world != null
                 if (!skipMultiChunk && world != null) {
                     CACHE.put(pos, info);
@@ -791,9 +810,20 @@ public class BuildingInfo {
                 }
             }
 
+            float corridorChance = profile.getCorridorChance();
+            boolean xrc;
+            boolean zrc;
+            if (hasBuilding && cellars > 0) {
+                xrc = false;
+                zrc = false;
+            } else {
+                xrc = rand.nextFloat() < corridorChance;
+                zrc = rand.nextFloat() < corridorChance;
+            }
+
             BuildingInfo info = new BuildingInfo(pos, config, true, true, actualBuildingType, floors, cellars,
                     ground, cityLevel, null, connectionAtX, connectionAtZ, frontType, multiPos, multiBuilding, null, 0f, hx, hz,
-                    false, false, null, selectedBricksPalette, selectedGlassPalette, selectedGlassSidePalette, doorBlock);
+                    false, false, null, xrc, zrc, selectedBricksPalette, selectedGlassPalette, selectedGlassSidePalette, doorBlock);
             // Кэшируем только если !skipMultiChunk, world != null и не degraded multi-part (top-left недоступен)
             if (!skipMultiChunk && world != null && !degradedMultiPart) {
                 CACHE.put(pos, info);
@@ -843,6 +873,111 @@ public class BuildingInfo {
     /** Y базового уровня этажа. Оригинал: первый этаж = getCityGroundLevel(), этажи выше +6. */
     public int getYForFloor(int floorIndex) {
         return getCityGroundLevel() + floorIndex * FLOOR_HEIGHT;
+    }
+
+    private com.lostcity.assets.CompiledPalette cachedCompiledPalette = null;
+
+    public com.lostcity.assets.CompiledPalette getCompiledPalette(net.minecraft.world.StructureWorldAccess world) {
+        if (cachedCompiledPalette != null) {
+            return cachedCompiledPalette;
+        }
+
+        com.lostcity.assets.Palette stylePalette = null;
+        if (isCity) {
+            com.lostcity.assets.CityStyle cityStyle = City.getCityStyle(chunkPos, config, world);
+            if (cityStyle != null && cityStyle.getStyle() != null) {
+                com.lostcity.assets.Style style = com.lostcity.assets.AssetRegistries.getStyle(cityStyle.getStyle());
+                if (style != null) {
+                    long seed = world != null ? world.getSeed() : 0;
+                    QualityRandom styleRand = new QualityRandom(
+                        seed + (long) chunkPos.z * 341873128712L + (long) chunkPos.x * 132897987541L);
+                    stylePalette = style.getRandomPalette(world, styleRand);
+                }
+            }
+        } else {
+            com.lostcity.assets.Style outsideStyle = com.lostcity.assets.AssetRegistries.getStyle("lostcities:outside");
+            if (outsideStyle != null) {
+                long seed = world != null ? world.getSeed() : 0;
+                QualityRandom styleRand = new QualityRandom(
+                    seed + (long) chunkPos.z * 341873128712L + (long) chunkPos.x * 132897987541L);
+                stylePalette = outsideStyle.getRandomPalette(world, styleRand);
+            }
+        }
+
+        if (stylePalette == null) {
+            com.lostcity.assets.Palette commonPalette = com.lostcity.assets.AssetRegistries.getPalette("lostcities:common");
+            com.lostcity.assets.Palette defaultPalette = com.lostcity.assets.AssetRegistries.getPalette("lostcities:default");
+            if (commonPalette != null) {
+                stylePalette = commonPalette;
+                if (defaultPalette != null) {
+                    stylePalette.merge(defaultPalette);
+                }
+            } else if (defaultPalette != null) {
+                stylePalette = defaultPalette;
+            } else {
+                stylePalette = new com.lostcity.assets.Palette("empty"); // Empty
+            }
+        }
+
+        cachedCompiledPalette = new com.lostcity.assets.CompiledPalette(stylePalette);
+
+        if (hasBuilding && buildingType != null) {
+            com.lostcity.assets.Building building = com.lostcity.assets.AssetRegistries.getBuilding(buildingType);
+            if (building != null && building.getRefPaletteName() != null) {
+                com.lostcity.assets.Palette buildingPalette = com.lostcity.assets.AssetRegistries.getPalette(building.getRefPaletteName());
+                if (buildingPalette != null) {
+                    cachedCompiledPalette = new com.lostcity.assets.CompiledPalette(cachedCompiledPalette, buildingPalette);
+                }
+            }
+        }
+
+        return cachedCompiledPalette;
+    }
+
+    public boolean hasXCorridor() {
+        if (!xRailCorridor) {
+            return false;
+        }
+        BuildingInfo i = getXmin();
+        while (i != null && i.canRailGoThrough() && i.xRailCorridor) {
+            i = i.getXmin();
+        }
+        if (i == null || (!i.hasBuilding) || i.cellars == 0) {
+            return false;
+        }
+        i = getXmax();
+        while (i != null && i.canRailGoThrough() && i.xRailCorridor) {
+            i = i.getXmax();
+        }
+        return i != null && !((!i.hasBuilding) || i.cellars == 0);
+    }
+
+    public boolean hasZCorridor() {
+        if (!zRailCorridor) {
+            return false;
+        }
+        BuildingInfo i = getZmin();
+        while (i != null && i.canRailGoThrough() && i.zRailCorridor) {
+            i = i.getZmin();
+        }
+        if (i == null || (!i.hasBuilding) || i.cellars == 0) {
+            return false;
+        }
+        i = getZmax();
+        while (i != null && i.canRailGoThrough() && i.zRailCorridor) {
+            i = i.getZmax();
+        }
+        return i != null && !((!i.hasBuilding) || i.cellars == 0);
+    }
+
+    public boolean canRailGoThrough() {
+        if (!isCity) {
+            return false;
+        }
+        if (!hasBuilding) {
+            return true;
+        }
+        return cellars == 0;
     }
 
     /** Y первого этажа города (улицы и здания). */

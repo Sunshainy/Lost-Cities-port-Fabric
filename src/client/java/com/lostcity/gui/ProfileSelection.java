@@ -5,7 +5,7 @@ package com.lostcity.gui;
  * null = "Disabled" (vanilla generation)
  */
 public class ProfileSelection {
-    private static String selectedProfile = null;
+    private static String selectedProfile = "default";
     
     public static String getSelectedProfile() {
         return selectedProfile;
@@ -16,10 +16,10 @@ public class ProfileSelection {
     }
     
     public static boolean isDisabled() {
-        return selectedProfile == null;
+        return "disabled".equals(selectedProfile) || selectedProfile == null;
     }
     
     public static void reset() {
-        selectedProfile = null;
+        selectedProfile = "default";
     }
 }

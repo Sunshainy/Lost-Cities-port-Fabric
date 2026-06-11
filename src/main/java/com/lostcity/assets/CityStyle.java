@@ -76,6 +76,8 @@ public class CityStyle {
     private Character sphereSideBlock;
     private Character sphereGlassBlock;
     
+    private final List<String> stuffTags = new ArrayList<>();
+
     /**
      * Конструктор из JSON объекта.
      */
@@ -84,6 +86,12 @@ public class CityStyle {
         this.style = json.style;
         this.inherit = json.inherit;
         
+        if (json.stuffTags != null) {
+            for (String t : json.stuffTags) {
+                stuffTags.add(t);
+            }
+        }
+
         // Building settings
         if (json.buildingSettings != null) {
             this.buildingChance = json.buildingSettings.buildingChance;
@@ -263,8 +271,15 @@ public class CityStyle {
         if (multibuildingChoices.isEmpty() && !inheritFrom.multibuildingChoices.isEmpty()) {
             multibuildingChoices.addAll(inheritFrom.multibuildingChoices);
         }
+        if (stuffTags.isEmpty() && !inheritFrom.stuffTags.isEmpty()) {
+            stuffTags.addAll(inheritFrom.stuffTags);
+        }
     }
     
+    public List<String> getStuffTags() {
+        return stuffTags;
+    }
+
     /**
      * Случайный multibuilding по весам. Оригинал: getRandomMultiBuilding(rand, pos).
      * pos не используется (в оригинале — для distance в ObjectSelector; у нас упрощено).
@@ -366,5 +381,33 @@ public class CityStyle {
      */
     public String getInherit() {
         return inherit;
+    }
+
+    public Character getCorridorRoofBlock() {
+        return corridorRoofBlock;
+    }
+
+    public Character getCorridorGlassBlock() {
+        return corridorGlassBlock;
+    }
+
+    public Character getGlowstoneBlock() {
+        return glowstoneBlock;
+    }
+
+    public Character getIronbarsBlock() {
+        return ironbarsBlock;
+    }
+
+    public Character getParkElevationBlock() {
+        return parkElevationBlock;
+    }
+
+    public Float getCorridorChance() {
+        return corridorChance;
+    }
+
+    public Character getRailMainBlock() {
+        return railMainBlock;
     }
 }

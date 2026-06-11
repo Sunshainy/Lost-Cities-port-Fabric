@@ -24,7 +24,7 @@ public class LostCityMod implements ModInitializer {
 
     public static final String MOD_ID = "lostcities";
     public static final String MOD_NAME = "Lost City";
-    public static final String VERSION = "0.6.0-beta";
+    public static final String VERSION = "0.7.0-beta";
 
     /** Логгер для всего мода */
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
@@ -53,6 +53,20 @@ public class LostCityMod implements ModInitializer {
         ModLogger.info("Loading configuration...");
         config = ConfigManager.load();
         config.printConfigInfo();
+
+        // Инициализируем ProfileSelection из конфига (для совместимости с GUI)
+        if (config != null && config.selectedProfile != null && !"disabled".equals(config.selectedProfile)) {
+            // Инициализируем только на клиенте (GUI доступен только на клиенте)
+            try {
+                Class<?> profileSelectionClass = Class.forName("com.lostcity.gui.ProfileSelection");
+                java.lang.reflect.Method setMethod = profileSelectionClass.getMethod("setSelectedProfile", String.class);
+                setMethod.invoke(null, config.selectedProfile);
+                ModLogger.info("ProfileSelection initialized from config: {}", config.selectedProfile);
+            } catch (Exception e) {
+                // На сервере GUI недоступен - это нормально
+                ModLogger.debug("ProfileSelection not available (server side): {}", e.getMessage());
+            }
+        }
 
         // Шаг 3 - Регистрация Features
         ModLogger.info("Registering world generation features...");

@@ -202,6 +202,8 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         
         // Мостики между чанками
         Bridges.generateBridges(driver, info);
+
+        Stuff.generateStuff(this, driver, info);
     }
 
     private void doGenerateCityChunk(StructureWorldAccess world, Chunk chunk, int chunkX, int chunkZ,
@@ -261,6 +263,8 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         if (info.highwayXLevel >= 0 || info.highwayZLevel >= 0) {
             generateHighways(driver, info, chunkX, chunkZ);
         }
+
+        Stuff.generateStuff(this, driver, info);
     }
 
     private static final int FLOOR_HEIGHT = 6;
@@ -410,9 +414,9 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                     if (state.getBlock() instanceof net.minecraft.block.StructureVoidBlock) {
                         state = y < waterLevel ? Blocks.WATER.getDefaultState() : Blocks.AIR.getDefaultState();
                     }
-                    // КРИТИЧНО: ротация должна учитывать реальный размер части (иначе лестницы/мелкие части поворачиваются неверно).
-                    int lx = transform.rotateX(px, pz, part.getXSize(), part.getZSize());
-                    int lz = transform.rotateZ(px, pz, part.getXSize(), part.getZSize());
+                    // ВАЖНО: в оригинале ротация ВСЕГДА происходит относительно чанка 16x16, независимо от размера part!
+                    int lx = transform.rotateX(px, pz);
+                    int lz = transform.rotateZ(px, pz);
                     if (lx < 0 || lx > 15 || lz < 0 || lz > 15) continue;
                     BlockState corrected = correctBlockState(state, lx, y, lz, driver);
                     if (corrected != null) driver.setBlock(lx, y, lz, corrected);
@@ -439,7 +443,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         int oy = info.getCityGroundLevel() + 1;
         CompiledPalette streetPalette = AssetRegistries.getStreetPalette();
         if (streetPalette == null) return;
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         generatePartForStreet(driver, part, transform, oy, streetPalette, seed);
     }
     
@@ -541,7 +545,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         char borderChar = 'y';
         char wallChar = 'w';
         int ground = info.getCityGroundLevel();
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         var rand = net.minecraft.util.math.random.Random.create(seed);
         boolean canDoParks = true;
 
@@ -933,6 +937,10 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
             createStairOpenings(driver, info, floor, buildingRotation);
         }
         
+        if (info.cellars >= 1) {
+            Corridors.generateCorridorConnections(driver, info);
+        }
+        
         if (callCount <= 5) {
             ModLogger.info("Building generation complete for chunk ({}, {})", chunkX, chunkZ);
         }
@@ -1236,7 +1244,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
             case PARK -> generateParkSection(info, height, streetPalette, driver);
         }
         int frontHeight = height + 1;
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         generateFrontPart(driver, info, info.getXmin(), Transform.ROTATE_NONE, frontHeight, streetPalette, seed);
         generateFrontPart(driver, info, info.getZmin(), Transform.ROTATE_90, frontHeight, streetPalette, seed);
         generateFrontPart(driver, info, info.getXmax(), Transform.ROTATE_180, frontHeight, streetPalette, seed);
@@ -1259,7 +1267,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         boolean zmin = BuildingInfo.hasRoadConnection(info, info.getZmin());
         boolean zmax = BuildingInfo.hasRoadConnection(info, info.getZmax());
         int cnt = (xmin ? 1 : 0) + (xmax ? 1 : 0) + (zmin ? 1 : 0) + (zmax ? 1 : 0);
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         Transform transform = Transform.ROTATE_NONE;
         BuildingPart part = null;
         List<String> partIds;
@@ -1308,7 +1316,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
     }
 
     private void generateFullStreetSection(BuildingInfo info, int height, CompiledPalette palette, ChunkDriver driver) {
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         String partId = getRandomPart(StreetParts.DEFAULT.full(), seed);
         BuildingPart part = AssetRegistries.getPart(partId);
         if (part != null) {
@@ -1317,7 +1325,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
     }
 
     private void generateParkSection(BuildingInfo info, int height, CompiledPalette palette, ChunkDriver driver) {
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         String partId = getRandomPart(StreetParts.DEFAULT.full(), seed);
         BuildingPart part = AssetRegistries.getPart(partId);
         if (part != null) {
@@ -1342,9 +1350,9 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                     if (c == ' ' || c == '\0') continue;
                     BlockState state = palette.get(c, rand);
                     if (state == null) state = Blocks.STONE_BRICKS.getDefaultState();
-                    // КРИТИЧНО: лестницы (stairs*) не 16×16, поэтому без размера поворот будет неправильный.
-                    int lx = transform.rotateX(px, pz, part.getXSize(), part.getZSize());
-                    int lz = transform.rotateZ(px, pz, part.getXSize(), part.getZSize());
+                    // ВАЖНО: в оригинале ротация ВСЕГДА происходит относительно чанка 16x16, независимо от размера part!
+                    int lx = transform.rotateX(px, pz);
+                    int lz = transform.rotateZ(px, pz);
                     if (lx < 0 || lx > 15 || lz < 0 || lz > 15) continue;
                     
                     // ВАЖНО: применяем ротацию к BlockState ПЕРЕД correctBlockState (как в оригинале)
