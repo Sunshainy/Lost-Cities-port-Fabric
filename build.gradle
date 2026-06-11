@@ -46,16 +46,6 @@ dependencies {
 
 	// Fabric API - ОБЯЗАТЕЛЬНО
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-	// Cloth Config - для конфигурации (понадобится на Шаге 2)
-	modApi("me.shedaniel.cloth:cloth-config-fabric:11.1.106") {
-		exclude(group: "net.fabricmc.fabric-api")
-	}
-	include "me.shedaniel.cloth:cloth-config-fabric:11.1.106"
-
-	// Architectury API - для совместимости регистров (понадобится на Шаге 6)
-	modImplementation "dev.architectury:architectury-fabric:9.1.12"
-	include "dev.architectury:architectury-fabric:9.1.12"
 }
 
 processResources {

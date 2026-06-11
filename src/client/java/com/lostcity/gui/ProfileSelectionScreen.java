@@ -103,7 +103,7 @@ public class ProfileSelectionScreen extends Screen {
     
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context);
+        this.renderBackgroundTexture(context);
         
         // Заголовок
         context.drawCenteredTextWithShadow(
