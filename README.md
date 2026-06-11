@@ -1,4 +1,4 @@
-# 🏙️ Lost City - Fabric Port (1.20.1)
+# 🏙️ Lost City - Fabric Port (1.20 - 1.20.4)
 
 **Full-featured port of Lost Cities mod from Forge to Fabric for Minecraft 1.20.1**
 
