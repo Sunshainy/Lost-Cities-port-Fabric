@@ -24,7 +24,7 @@ public class LostCityMod implements ModInitializer {
 
     public static final String MOD_ID = "lostcities";
     public static final String MOD_NAME = "Lost City";
-    public static final String VERSION = "0.7.0-beta";
+    public static final String VERSION = "0.8.0-beta";
 
     /** Логгер для всего мода */
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
