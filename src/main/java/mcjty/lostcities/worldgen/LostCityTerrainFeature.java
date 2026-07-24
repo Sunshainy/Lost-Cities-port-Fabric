@@ -3,6 +3,7 @@ package mcjty.lostcities.worldgen;
 import mcjty.lostcities.LostCities;
 import mcjty.lostcities.api.ILostCities;
 import mcjty.lostcities.api.LostCityEvent;
+import mcjty.lostcities.api.LostCityEvents;
 import mcjty.lostcities.api.RailChunkType;
 import mcjty.lostcities.config.LostCityProfile;
 import mcjty.lostcities.editor.EditModeData;
@@ -45,7 +46,6 @@ import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import net.neoforged.neoforge.common.NeoForge;
 import org.apache.commons.lang3.tuple.Pair;
 
 import javax.annotation.Nonnull;
@@ -343,7 +343,7 @@ public class LostCityTerrainFeature {
         GenerationContext.current().random().setSeed(chunkX * 257017164707L + chunkZ * 101754694003L);
 
         LostCityEvent.PreExplosionEvent event = new LostCityEvent.PreExplosionEvent(provider.getWorld(), LostCities.lostCitiesImp, chunkX, chunkZ, getDriver().getPrimer());
-        LostCityEvent.PreExplosionEvent posted = NeoForge.EVENT_BUS.post(event);    // @todo 1.21 is this right?
+        LostCityEvent.PreExplosionEvent posted = LostCityEvents.post(LostCityEvents.PRE_EXPLOSION, event);
         if (!posted.isCanceled()) {
             if (info.getDamageArea().hasExplosions()) {
                 breakBlocksForDamageNew(chunkX, chunkZ, info);
@@ -420,7 +420,7 @@ public class LostCityTerrainFeature {
         int chunkX = info.coord.chunkX();
         int chunkZ = info.coord.chunkZ();
         LostCityEvent.PostGenOutsideChunkEvent postevent = new LostCityEvent.PostGenOutsideChunkEvent(provider.getWorld(), LostCities.lostCitiesImp, chunkX, chunkZ, getDriver().getPrimer());
-        NeoForge.EVENT_BUS.post(postevent);
+        LostCityEvents.post(LostCityEvents.POST_GEN_OUTSIDE_CHUNK, postevent);
 
         Bridges.generateBridges(this, info);
         Highways.generateHighways(this, info);
@@ -908,7 +908,7 @@ public class LostCityTerrainFeature {
         int chunkX = info.coord.chunkX();
         int chunkZ = info.coord.chunkZ();
         LostCityEvent.PreGenCityChunkEvent event = new LostCityEvent.PreGenCityChunkEvent(provider.getWorld(), LostCities.lostCitiesImp, chunkX, chunkZ, getDriver().getPrimer());
-        LostCityEvent.PreGenCityChunkEvent posted = NeoForge.EVENT_BUS.post(event); // @todo 1.21 is this right?
+        LostCityEvent.PreGenCityChunkEvent posted = LostCityEvents.post(LostCityEvents.PRE_GEN_CITY_CHUNK, event);
         if (!posted.isCanceled()) {
             if (building) {
                 generateBuilding(info, heightmap, chunk);
@@ -917,7 +917,7 @@ public class LostCityTerrainFeature {
             }
         }
         LostCityEvent.PostGenCityChunkEvent postevent = new LostCityEvent.PostGenCityChunkEvent(provider.getWorld(), LostCities.lostCitiesImp, chunkX, chunkZ, getDriver().getPrimer());
-        NeoForge.EVENT_BUS.post(postevent);
+        LostCityEvents.post(LostCityEvents.POST_GEN_CITY_CHUNK, postevent);
 
         if (info.profile.RUIN_CHANCE > 0.0) {
             generateRuins(info);

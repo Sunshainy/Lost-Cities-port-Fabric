@@ -3,8 +3,6 @@ package mcjty.lostcities.setup;
 import mcjty.lostcities.api.ILostCityProfileSetup;
 import mcjty.lostcities.config.ProfileSetup;
 import mcjty.lostcities.worldgen.lost.cityassets.AssetRegistries;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -27,15 +25,8 @@ public class ModSetup {
         ProfileSetup.setupProfiles();
     }
 
-    public void init(FMLCommonSetupEvent e) {
-        NeoForge.EVENT_BUS.register(new ForgeEventHandlers());
-        // @todo 1.14
-//        MinecraftForge.TERRAIN_GEN_BUS.register(new TerrainEventHandlers());
-
-        // @todo 1.14
-//        LootTableList.register(Identifier.fromNamespaceAndPath(LostCities.MODID, "chests/lostcitychest"));
-//        LootTableList.register(Identifier.fromNamespaceAndPath(LostCities.MODID, "chests/raildungeonchest"));
-
+    public void init() {
+        ForgeEventHandlers.register();
         AssetRegistries.reset();
     }
 }

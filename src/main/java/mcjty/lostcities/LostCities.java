@@ -1,31 +1,31 @@
 package mcjty.lostcities;
 
-import mcjty.lostcities.api.ILostCities;
-import mcjty.lostcities.api.ILostCitiesPre;
-import mcjty.lostcities.datagen.DataGenerators;
+import fuzs.forgeconfigapiport.fabric.api.v5.ConfigRegistry;
 import mcjty.lostcities.network.PacketRequestProfile;
 import mcjty.lostcities.network.PacketReturnProfileToClient;
 import mcjty.lostcities.setup.*;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.Mod;
+import mcjty.lostcities.varia.ServerAccess;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
+import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.BiomeTags;
+import net.minecraft.world.level.levelgen.GenerationStep;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.event.lifecycle.FMLConstructModEvent;
-import net.neoforged.fml.event.lifecycle.InterModProcessEvent;
-import net.neoforged.fml.loading.FMLPaths;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
-@Mod(LostCities.MODID)
-public class LostCities {
+public class LostCities implements ModInitializer {
     public static final String MODID = "lostcities";
 
     public static final Logger LOGGER = LogManager.getLogger(LostCities.MODID);
@@ -34,58 +34,50 @@ public class LostCities {
     public static LostCities instance;
     public static final LostCitiesImp lostCitiesImp = new LostCitiesImp();
 
-    public LostCities(ModContainer container, IEventBus bus, Dist dist) {
+    @Override
+    public void onInitialize() {
         instance = this;
 
-        Registration.init(bus);
-        CustomRegistries.init(bus);
+        Registration.init();
+        CustomRegistries.init();
 
-        Path configPath = FMLPaths.CONFIGDIR.get();
+        Path configPath = FabricLoader.getInstance().getConfigDir();
         File dir = new File(configPath + File.separator + "lostcities");
         dir.mkdirs();
 
-        container.registerConfig(ModConfig.Type.CLIENT, Config.CLIENT_CONFIG, "lostcities/client.toml");
-        container.registerConfig(ModConfig.Type.COMMON, Config.COMMON_CONFIG, "lostcities/common.toml");
-        container.registerConfig(ModConfig.Type.SERVER, Config.SERVER_CONFIG);
+        // Forge Config API Port keeps the NeoForge ModConfigSpec API intact on Fabric
+        ConfigRegistry.INSTANCE.register(MODID, ModConfig.Type.CLIENT, Config.CLIENT_CONFIG, "lostcities/client.toml");
+        ConfigRegistry.INSTANCE.register(MODID, ModConfig.Type.COMMON, Config.COMMON_CONFIG, "lostcities/common.toml");
+        ConfigRegistry.INSTANCE.register(MODID, ModConfig.Type.SERVER, Config.SERVER_CONFIG);
 
         setup.preInit();
-        bus.addListener(setup::init);
-        bus.addListener(this::onRegisterPayloadHandler);
-        bus.addListener(this::processIMC);
-        bus.addListener(this::onConstructModEvent);
-        bus.addListener(CustomRegistries::onDataPackRegistry);
-        bus.addListener(DataGenerators::gatherData);
+        setup.init();
 
-        if (dist.isClient()) {
-            bus.addListener(ClientSetup::init);
-        }
+        registerNetworking();
+
+        // Track the current server (replaces NeoForge's ServerLifecycleHooks)
+        ServerLifecycleEvents.SERVER_STARTING.register(server -> ServerAccess.setServer(server));
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> ServerAccess.setServer(null));
+
+        // Feature injection (replaces the NeoForge biome modifier JSONs)
+        BiomeModifications.addFeature(BiomeSelectors.tag(BiomeTags.IS_OVERWORLD),
+                GenerationStep.Decoration.RAW_GENERATION,
+                ResourceKey.create(Registries.PLACED_FEATURE, Identifier.fromNamespaceAndPath(MODID, "lostcities")));
+        BiomeModifications.addFeature(BiomeSelectors.tag(BiomeTags.IS_OVERWORLD),
+                GenerationStep.Decoration.TOP_LAYER_MODIFICATION,
+                ResourceKey.create(Registries.PLACED_FEATURE, Identifier.fromNamespaceAndPath(MODID, "spheres")));
+
+        // Note: NeoForge IMC (ILostCities/ILostCitiesPre) has no Fabric equivalent. Mods that
+        // want the Lost Cities API can access LostCities.lostCitiesImp directly.
+    }
+
+    private void registerNetworking() {
+        PayloadTypeRegistry.playS2C().register(PacketReturnProfileToClient.TYPE, PacketReturnProfileToClient.CODEC);
+        PayloadTypeRegistry.playC2S().register(PacketRequestProfile.TYPE, PacketRequestProfile.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(PacketRequestProfile.TYPE, (payload, context) -> payload.handle());
     }
 
     public static Logger getLogger() {
         return LOGGER;
-    }
-
-    private void onRegisterPayloadHandler(RegisterPayloadHandlersEvent event) {
-        final PayloadRegistrar registrar = event.registrar(MODID)
-                .versioned("1.0")
-                .optional();
-        registrar.playToClient(PacketReturnProfileToClient.TYPE, PacketReturnProfileToClient.CODEC, PacketReturnProfileToClient::handle);
-        registrar.playToServer(PacketRequestProfile.TYPE, PacketRequestProfile.CODEC, PacketRequestProfile::handle);
-    }
-
-    private void onConstructModEvent(FMLConstructModEvent event) {
-        event.enqueueWork(() -> {
-            event.getIMCStream(ILostCities.GET_LOST_CITIES_PRE::equals).forEach(message -> {
-                Supplier<Function<ILostCitiesPre, Void>> supplier = (Supplier<Function<ILostCitiesPre, Void>>) message.messageSupplier();
-                supplier.get().apply(new LostCitiesPreImp());
-            });
-        });
-    }
-
-    private void processIMC(final InterModProcessEvent event) {
-        event.getIMCStream(ILostCities.GET_LOST_CITIES::equals).forEach(message -> {
-            Supplier<Function<ILostCities, Void>> supplier = (Supplier<Function<ILostCities, Void>>) message.messageSupplier();
-            supplier.get().apply(lostCitiesImp);
-        });
     }
 }
