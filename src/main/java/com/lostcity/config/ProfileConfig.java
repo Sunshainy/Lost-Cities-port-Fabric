@@ -9,7 +9,7 @@ public class ProfileConfig {
     // === ОСНОВНЫЕ ПАРАМЕТРЫ ===
     
     public String profileName = "default";
-    public float cityChance = 0.01f;
+    public float cityChance = 0.05f;
     public int groundLevel = 71;
     public int seaLevel = -1;
 
@@ -184,6 +184,7 @@ public class ProfileConfig {
     public int getCitySphereOuterGroundLevel() { return citySphereOuterGroundLevel; }
 
     public boolean getGenerateLoot() { return generateLoot; }
+    public boolean getGenerateSpawners() { return generateSpawners; }
     public int getSeaLevel() { return seaLevel; }
     public int getCityLevel0Height() { return cityLevel0Height; }
     public int getCityLevel1Height() { return cityLevel1Height; }

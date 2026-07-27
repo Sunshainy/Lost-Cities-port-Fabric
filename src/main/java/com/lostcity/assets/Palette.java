@@ -16,6 +16,7 @@ public class Palette {
     private final Map<Character, String> charToFromPalette = new HashMap<>();
     private final Map<Character, String> charToDamaged = new HashMap<>();
     private final Map<Character, String> charToLoot = new HashMap<>();
+    private final Map<Character, String> charToMobId = new HashMap<>();
     private final Map<Character, Boolean> charToTorch = new HashMap<>();
 
     public Palette(String name) {
@@ -50,12 +51,20 @@ public class Palette {
         charToLoot.put(c, condition);
     }
 
+    public void putMobId(char c, String mobId) {
+        charToMobId.put(c, mobId);
+    }
+
     public void putTorch(char c, boolean isTorch) {
         charToTorch.put(c, isTorch);
     }
 
     public String getLoot(char c) {
         return charToLoot.get(c);
+    }
+
+    public String getMobId(char c) {
+        return charToMobId.get(c);
     }
 
     public boolean isTorch(char c) {
@@ -142,6 +151,9 @@ public class Palette {
         
         // Объединяем loot (other перезаписывает)
         charToLoot.putAll(other.charToLoot);
+        
+        // Объединяем mobid (other перезаписывает)
+        charToMobId.putAll(other.charToMobId);
         
         // Объединяем torch (other перезаписывает)
         charToTorch.putAll(other.charToTorch);

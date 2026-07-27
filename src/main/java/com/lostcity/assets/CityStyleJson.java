@@ -76,6 +76,7 @@ public class CityStyleJson {
     }
     
     public static class SelectorsJson {
+        public List<FactorValueJson> buildings;
         public List<FactorValueJson> multibuildings;
     }
     

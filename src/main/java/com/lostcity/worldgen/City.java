@@ -30,7 +30,7 @@ public class City {
         () -> LostCityMod.getConfig() != null ? LostCityMod.getConfig().getCacheCleanupSeconds() : 300);
     
     /** Кэш CityRarityMap по dimension (как в оригинале). Используется когда CITY_CHANCE < 0. */
-    private static final Map<String, CityRarityMap> CITY_RARITY_MAP = new HashMap<>();
+    private static final Map<String, CityRarityMap> CITY_RARITY_MAP = new java.util.concurrent.ConcurrentHashMap<>();
     
     /** Этап 1.3: Кэш для predefined buildings/streets по ChunkPos. */
     private static Map<ChunkPos, PredefinedBuilding> predefinedBuildingMap = null;

@@ -93,9 +93,13 @@ public class BuildingInfo {
     /** Выбранная палитра боковых сторон стекла (для единообразия в multibuilding). */
     public final String selectedGlassSidePalette;
     
-    // === ДВЕРИ ===
+    // === ДВЕРИ И ЛУТ ===
     /** Тип двери для этого здания (случайный выбор). Оригинал: doorBlock. */
     public final net.minecraft.block.Block doorBlock;
+    /** Флаг отсутствия лута и спавнеров для этого здания. Оригинал: noLoot. */
+    public final boolean noLoot;
+    /** Список отложенных задач генерации для этого здания. */
+    private final List<Runnable> postTodos = new java.util.ArrayList<>();
     
     // === TERRAIN CORRECTION (Этап 2.1) ===
     /** Кеш для desiredMaxHeightL1. Оригинал: desiredMaxHeight1. */
@@ -171,6 +175,27 @@ public class BuildingInfo {
         this.selectedGlassPalette = selectedGlassPalette;
         this.selectedGlassSidePalette = selectedGlassSidePalette;
         this.doorBlock = doorBlock;
+
+        ProfileConfig profile = config.getActiveProfile();
+        java.util.Random rand = new com.lostcity.util.QualityRandom(chunkPos.x * 2570174657L + chunkPos.z * 101754695981L);
+        this.noLoot = profile.getBuildingWithoutLootChance() > 0 && rand.nextFloat() < profile.getBuildingWithoutLootChance();
+    }
+
+    public void addPostTodo(Runnable task) {
+        if (task != null) {
+            this.postTodos.add(task);
+        }
+    }
+
+    public void executePostTodos() {
+        for (Runnable task : postTodos) {
+            try {
+                task.run();
+            } catch (Exception e) {
+                ModLogger.error("Error executing postTodo in BuildingInfo ({}, {}): {}", chunkPos.x, chunkPos.z, e.getMessage());
+            }
+        }
+        postTodos.clear();
     }
     
     /**
@@ -209,10 +234,15 @@ public class BuildingInfo {
      * @param skipMultiChunk если true, не вычисляет MultiChunk (для избежания рекурсии)
      */
     public static BuildingInfo get(ChunkPos pos, LostCityConfig config, StructureWorldAccess world, boolean skipMultiChunk) {
+        // Проверяем кэш сразу
+        BuildingInfo cached = CACHE.get(pos);
+        if (cached != null) {
+            return cached;
+        }
+
         // Защита от рекурсии: проверяем, не вычисляется ли уже этот чанк
         java.util.Set<ChunkPos> inProgress = IN_PROGRESS.get();
         if (inProgress.contains(pos)) {
-            ModLogger.warn("BuildingInfo.get({}, {}) - RECURSION DETECTED! Returning minimal BuildingInfo", pos.x, pos.z);
             // Возвращаем минимальный BuildingInfo чтобы избежать рекурсии
             ProfileConfig profile = config.getActiveProfile();
             int ground = profile.getGroundLevel();
@@ -225,16 +255,7 @@ public class BuildingInfo {
         // Помечаем чанк как вычисляемый
         inProgress.add(pos);
         try {
-            // ВАЖНО: используем кэш ТОЛЬКО если skipMultiChunk=false
-            // Иначе можем получить "неполную" инфу из временного вызова canPlaceBuilding
-            if (!skipMultiChunk) {
-                BuildingInfo cached = CACHE.get(pos);
-                if (cached != null) {
-                    ModLogger.debug("BuildingInfo.get({}, {}) - CACHE HIT (skipMultiChunk={})", pos.x, pos.z, skipMultiChunk);
-                    return cached;
-                }
-            }
-            ModLogger.info("BuildingInfo.get({}, {}) - calculating (world={}, skipMultiChunk={})", 
+            ModLogger.debug("BuildingInfo.get({}, {}) - calculating (world={}, skipMultiChunk={})", 
                 pos.x, pos.z, world != null ? "present" : "null", skipMultiChunk);
 
             // Этап 1.2: Передаём world для проверки высоты (может быть null - тогда используется ChunkHeightmap.getCurrentWorld())
@@ -412,25 +433,34 @@ public class BuildingInfo {
                     }
                 }
                 
-                // Если predefined building не найден, выбираем случайное
+                // Если predefined building не найден, выбираем здание из CityStyle или стандартного пула
                 if (actualBuildingType == null) {
-                    List<String> ids = new ArrayList<>();
-                    for (String buildingId : allBuildings.keySet()) {
-                        // Фильтруем части multibuilding по паттерну: название заканчивается на 2 цифры (00, 01, 10, 11, и т.д.)
-                        // Примеры: center00, center01, center10, center11, library00, town01, shopping10
-                        // НЕ multibuilding: building1, building2, cabin, radiotower
-                        if (!isMultiBuildingPart(buildingId)) {
-                            ids.add(buildingId);
+                    com.lostcity.assets.CityStyle cs = world != null ? City.getCityStyle(pos, config, world) : null;
+                    if (cs != null) {
+                        String styleBuilding = cs.getRandomBuilding(rand);
+                        if (styleBuilding != null) {
+                            if (allBuildings.containsKey(styleBuilding)) {
+                                actualBuildingType = styleBuilding;
+                            } else if (allBuildings.containsKey("lostcities:" + styleBuilding)) {
+                                actualBuildingType = "lostcities:" + styleBuilding;
+                            }
                         }
                     }
                     
-                    if (ids.isEmpty()) {
-                        // Если все здания - части multibuilding, используем все
-                        ModLogger.warn("All buildings are multibuilding parts! Using full list for chunk ({}, {})", pos.x, pos.z);
-                        ids = new ArrayList<>(allBuildings.keySet());
+                    if (actualBuildingType == null || !allBuildings.containsKey(actualBuildingType)) {
+                        // Резервный случайный выбор: фильтруем части multibuilding И рассыпанные постройки (cabin, radiotower, oilrig)
+                        List<String> ids = new ArrayList<>();
+                        for (String buildingId : allBuildings.keySet()) {
+                            boolean isScattered = buildingId.contains("cabin") || buildingId.contains("radiotower") || buildingId.contains("oilrig");
+                            if (!isMultiBuildingPart(buildingId) && !isScattered) {
+                                ids.add(buildingId);
+                            }
+                        }
+                        if (ids.isEmpty()) {
+                            ids = new ArrayList<>(allBuildings.keySet());
+                        }
+                        actualBuildingType = ids.get(rand.nextInt(ids.size()));
                     }
-                    
-                    actualBuildingType = ids.get(rand.nextInt(ids.size()));
                     ModLogger.debug("Selected single building '{}' for chunk ({}, {})", actualBuildingType, pos.x, pos.z);
                 }
             }
@@ -651,19 +681,23 @@ public class BuildingInfo {
                     // Этап 3.1: Вычисляем floors и cellars с учётом CityStyle (как в оригинале)
                     cityStyle = world != null ? City.getCityStyle(pos, config, world) : null;
                     
-                    // Вычисляем maxfloors с учётом CityStyle
+                    // Вычисляем maxfloors с учётом требований здания, CityStyle и профиля
                     int maxfloors = profile.getBuildingMaxFloors();
-                    if (cityStyle != null && cityStyle.getMaxFloorCount() != null) {
+                    if (building != null && building.getMaxFloors() != -1) {
+                        maxfloors = building.getMaxFloors();
+                    } else if (cityStyle != null && cityStyle.getMaxFloorCount() != null) {
                         maxfloors = Math.min(maxfloors, cityStyle.getMaxFloorCount());
                     }
                     
-                    // Вычисляем minfloors с учётом CityStyle
+                    // Вычисляем minfloors с учётом требований здания, CityStyle и профиля
                     int minfloors = profile.getBuildingMinFloors() + 1; // +1 потому что не считаем верхний этаж
-                    if (cityStyle != null && cityStyle.getMinFloorCount() != null) {
+                    if (building != null && building.getMinFloors() != -1) {
+                        minfloors = building.getMinFloors();
+                    } else if (cityStyle != null && cityStyle.getMinFloorCount() != null) {
                         minfloors = Math.max(minfloors, cityStyle.getMinFloorCount());
                     }
                     
-                    floors = Math.max(1, minfloors - 1 + rand.nextInt(Math.max(1, maxfloors - (minfloors - 1) + 1)));
+                    floors = minfloors >= maxfloors ? minfloors : (minfloors + rand.nextInt(maxfloors - minfloors + 1));
                     cellars = 0; // cellars будут вычислены ниже
                 }
                 
@@ -743,8 +777,12 @@ public class BuildingInfo {
                     cityStyle = City.getCityStyle(pos, config, world);
                 }
                 
-                int maxcellars = cityLevel; // Упрощенная версия: maxcellars = cityLevel (как BUILDING_MAXCELLARS + cityLevel)
-                int mincellars = 0; // Упрощенная версия: mincellars = 0 (как BUILDING_MINCELLARS)
+                int maxcellars = profile.getBuildingMaxCellars() + cityLevel;
+                int mincellars = profile.getBuildingMinCellars();
+                
+                if (building != null && building.getMaxCellars() != -1) {
+                    maxcellars = Math.min(maxcellars, building.getMaxCellars());
+                }
                 
                 if (cityStyle != null) {
                     if (cityStyle.getMaxCellarCount() != null) {
@@ -824,10 +862,7 @@ public class BuildingInfo {
             BuildingInfo info = new BuildingInfo(pos, config, true, true, actualBuildingType, floors, cellars,
                     ground, cityLevel, null, connectionAtX, connectionAtZ, frontType, multiPos, multiBuilding, null, 0f, hx, hz,
                     false, false, null, xrc, zrc, selectedBricksPalette, selectedGlassPalette, selectedGlassSidePalette, doorBlock);
-            // Кэшируем только если !skipMultiChunk, world != null и не degraded multi-part (top-left недоступен)
-            if (!skipMultiChunk && world != null && !degradedMultiPart) {
-                CACHE.put(pos, info);
-            }
+            CACHE.put(pos, info);
             return info;
         } finally {
             // Удаляем чанк из IN_PROGRESS после завершения вычисления

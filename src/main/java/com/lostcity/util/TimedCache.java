@@ -1,39 +1,40 @@
 package com.lostcity.util;
 
-import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 
 /**
- * Кэш с TTL и ограничением размера: записи удаляются после N секунд неиспользования
- * или при превышении maxSize (LRU eviction).
- * Портировано из mcjty.lostcities.varia.TimedCache с оптимизациями.
+ * Высокопроизводительный и 100% потокобезопасный кэш с TTL.
+ * Портирован из mcjty.lostcities.varia.TimedCache.
  */
 public class TimedCache<K, V> {
 
-    private static final class Entry<V> {
-        final V value;
-        long lastAccess;
+    private static class Entry<V> {
+        private final V value;
+        private volatile long lastAccess;
 
-        Entry(V value, long lastAccess) {
+        private Entry(V value, long lastAccess) {
             this.value = value;
             this.lastAccess = lastAccess;
         }
     }
 
-    private final Map<K, Entry<V>> cache = new LinkedHashMap<>();  // LinkedHashMap для LRU
+    private final ConcurrentMap<K, Entry<V>> cache = new ConcurrentHashMap<>();
     private final IntSupplier ttlSecondsSupplier;
-    private final int maxSize;  // Максимальный размер кэша (0 = без ограничений)
-    private long nextCleanupAt;
+    private final AtomicLong nextCleanupAt;
+    private final int maxSize;
 
     public TimedCache(IntSupplier ttlSecondsSupplier) {
-        this(ttlSecondsSupplier, 10000);  // По умолчанию 10000 записей
+        this(ttlSecondsSupplier, 10000);
     }
-    
+
     public TimedCache(IntSupplier ttlSecondsSupplier, int maxSize) {
         this.ttlSecondsSupplier = ttlSecondsSupplier;
         this.maxSize = maxSize;
-        this.nextCleanupAt = System.currentTimeMillis();
+        this.nextCleanupAt = new AtomicLong(System.currentTimeMillis());
     }
 
     public void clear() {
@@ -48,7 +49,7 @@ public class TimedCache<K, V> {
             return null;
         }
         if (isExpired(entry, now)) {
-            cache.remove(key);
+            cache.remove(key, entry);
             maybeCleanup(now);
             return null;
         }
@@ -66,36 +67,35 @@ public class TimedCache<K, V> {
 
     public V computeIfAbsent(K key, Function<K, V> supplier) {
         long now = System.currentTimeMillis();
-        Entry<V> entry = cache.get(key);
-        if (entry != null) {
-            if (isExpired(entry, now)) {
-                cache.remove(key);
-            } else {
-                entry.lastAccess = now;
-                maybeCleanup(now);
-                return entry.value;
+        Entry<V> cached = cache.get(key);
+        if (cached != null && !isExpired(cached, now)) {
+            cached.lastAccess = now;
+            maybeCleanup(now);
+            return cached.value;
+        }
+        Entry<V> entry = cache.compute(key, (k, current) -> {
+            if (current != null && !isExpired(current, now)) {
+                current.lastAccess = now;
+                return current;
             }
-        }
-        V value = supplier.apply(key);
-        if (value != null) {
-            cache.put(key, new Entry<>(value, now));
-            evictIfNeeded();
-        }
+            V value = supplier.apply(k);
+            return value == null ? null : new Entry<>(value, now);
+        });
+        evictIfNeeded();
         maybeCleanup(now);
-        return value;
+        return entry == null ? null : entry.value;
     }
-    
-    /**
-     * Удаляет старые записи если размер превышает maxSize (LRU eviction)
-     */
+
     private void evictIfNeeded() {
         if (maxSize <= 0 || cache.size() <= maxSize) return;
-        
+        // Очищаем самые старые записи если превышен maxSize
         int toRemove = cache.size() - maxSize;
-        Iterator<K> it = cache.keySet().iterator();
-        for (int i = 0; i < toRemove && it.hasNext(); i++) {
-            it.next();
-            it.remove();
+        if (toRemove > 0) {
+            long now = System.currentTimeMillis();
+            cache.entrySet().stream()
+                .sorted((e1, e2) -> Long.compare(e1.getValue().lastAccess, e2.getValue().lastAccess))
+                .limit(toRemove)
+                .forEach(e -> cache.remove(e.getKey(), e.getValue()));
         }
     }
 
@@ -104,25 +104,29 @@ public class TimedCache<K, V> {
     }
 
     private void maybeCleanup(long now) {
-        if (now < nextCleanupAt) {
+        long scheduledAt = nextCleanupAt.get();
+        if (now < scheduledAt || !nextCleanupAt.compareAndSet(scheduledAt, now + getCleanupIntervalMillis())) {
             return;
         }
         cleanup(now);
-        nextCleanupAt = now + getCleanupIntervalMillis();
     }
 
     private void cleanup(long now) {
-        long ttl = getTtlMillis();
-        if (ttl <= 0) {
+        long ttlMillis = getTtlMillis();
+        if (ttlMillis <= 0) {
             cache.clear();
             return;
         }
-        Iterator<Map.Entry<K, Entry<V>>> it = cache.entrySet().iterator();
-        while (it.hasNext()) {
-            if (now - it.next().getValue().lastAccess >= ttl) {
-                it.remove();
+        cache.forEach((key, entry) -> {
+            if (now - entry.lastAccess >= ttlMillis) {
+                cache.remove(key, entry);
             }
-        }
+        });
+    }
+
+    private long getCleanupIntervalMillis() {
+        long ttlMillis = getTtlMillis();
+        return Math.max(1000L, ttlMillis / 2);
     }
 
     private long getTtlMillis() {
@@ -132,21 +136,11 @@ public class TimedCache<K, V> {
                 return 0L;
             }
             return ttlSeconds * 1000L;
-        } catch (IllegalStateException e) {
-            // Config not loaded yet (e.g., during GUI rendering), use default value
-            return 300_000L; // Default 5 minutes (300 seconds)
         } catch (Exception e) {
-            // Any other error, use default value
-            return 300_000L; // Default 5 minutes (300 seconds)
+            return 300_000L; // Default 5 minutes
         }
     }
-    
-    private long getCleanupIntervalMillis() {
-        long ttlMillis = getTtlMillis();
-        return Math.max(1000L, ttlMillis / 2);
-    }
-    
-    /** Размер кэша (для отладки/мониторинга) */
+
     public int size() {
         return cache.size();
     }

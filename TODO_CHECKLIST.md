@@ -12,7 +12,8 @@
 - [ ] **Railways** - железные дороги (`gen/Railways.java`)
 - [ ] **Scattered** - разбросанные структуры (`gen/Scattered.java`)
 - [ ] **Spheres** - сферы/биосферы (`gen/Spheres.java`)
-- [ ] **Stuff** - декоративные объекты (`gen/Stuff.java`)
+- [x] **Stuff & BlockEntities** - обработка сундуков с лутом, спавнеров мобов и отложенных задач (`postTodos`, `noLoot`)
+- [ ] **Corridors** - коридоры между зданиями (`gen/Corridors.java`)
 - [ ] Интегрировать все генераторы в `LostCityFeature.doGenerateCityChunk()` и `doNormalChunk()`
 
 ### 2. Система избегания структур

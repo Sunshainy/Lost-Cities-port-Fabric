@@ -227,6 +227,9 @@ public class AssetLoader implements SimpleSynchronousResourceReloadListener {
                     if (e.loot != null && !e.loot.isBlank()) {
                         p.putLoot(c, e.loot);
                     }
+                    if (e.mobid != null && !e.mobid.isBlank()) {
+                        p.putMobId(c, e.mobid);
+                    }
                     if (e.torch != null) {
                         p.putTorch(c, e.torch);
                     }
@@ -287,13 +290,15 @@ public class AssetLoader implements SimpleSynchronousResourceReloadListener {
                 boolean allowDoors = j.allowDoors != null ? j.allowDoors : true;
                 float prefersLonely = j.prefersLonely != null ? j.prefersLonely : 0.0f;
                 int maxCellars = j.maxCellars != null ? j.maxCellars : -1;
-                Building b = new Building(name, fill, rub, j.refPalette, allowDoors, prefersLonely, maxCellars);
+                int minFloors = j.minFloors != null ? j.minFloors : -1;
+                int maxFloors = j.maxFloors != null ? j.maxFloors : -1;
+                Building b = new Building(name, fill, rub, j.refPalette, allowDoors, prefersLonely, maxCellars, minFloors, maxFloors);
                 for (PartRefJson pr : j.parts) {
-                    if (pr != null && pr.part != null) b.addPart(pr.top, pr.part);
+                    if (pr != null && pr.part != null) b.addPart(pr.top, pr.part, pr.floor, pr.range);
                 }
                 if (j.parts2 != null) {
                     for (PartRefJson pr : j.parts2) {
-                        if (pr != null && pr.part != null) b.addPart2(pr.top, pr.part);
+                        if (pr != null && pr.part != null) b.addPart2(pr.top, pr.part, pr.floor, pr.range);
                     }
                 }
                 AssetRegistries.putBuilding(name, b);

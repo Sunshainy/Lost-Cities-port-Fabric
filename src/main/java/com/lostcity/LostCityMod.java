@@ -24,7 +24,7 @@ public class LostCityMod implements ModInitializer {
 
     public static final String MOD_ID = "lostcities";
     public static final String MOD_NAME = "Lost City";
-    public static final String VERSION = "0.8.0-beta";
+    public static final String VERSION = "1.0.0";
 
     /** Логгер для всего мода */
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
@@ -77,6 +77,9 @@ public class LostCityMod implements ModInitializer {
         // Шаг 6 - Регистрация загрузчика ассетов (JSON: buildings, palettes, parts)
         ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(new AssetLoader());
         ModLogger.info("Asset loader registered (loads on resource reload / world load)");
+
+        // Шаг 7 - Регистрация игровых команд (/lostcities info, /lc info)
+        com.lostcity.commands.ModCommands.register();
 
         // Шаг 11 - Очистка кэшей при выгрузке мира (как в оригинале ForgeEventHandlers)
         ServerWorldEvents.UNLOAD.register((server, world) -> {

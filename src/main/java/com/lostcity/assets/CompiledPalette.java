@@ -25,18 +25,19 @@ public class CompiledPalette {
     private final Map<Character, Object> palette = new HashMap<>();
     private final Map<BlockState, BlockState> damagedToBlock = new HashMap<>();
     private final Map<Character, String> lootMap = new HashMap<>();
+    private final Map<Character, String> mobIdMap = new HashMap<>();
     private final Map<Character, Boolean> torchMap = new HashMap<>();
     
     /**
      * Создать CompiledPalette из одной или нескольких палитр
      */
     public CompiledPalette(Palette... palettes) {
-        ModLogger.info("Creating CompiledPalette from {} palettes", palettes.length);
+        ModLogger.debug("Creating CompiledPalette from {} palettes", palettes.length);
         
         // Первый проход: добавляем прямые блоки, массивы блоков и variant ссылки
         for (Palette p : palettes) {
             if (p != null) {
-                ModLogger.info("  Processing palette '{}' ({} total: {} blocks, {} arrays, {} variants, {} frompalette)...", 
+                ModLogger.debug("  Processing palette '{}' ({} total: {} blocks, {} arrays, {} variants, {} frompalette)...", 
                     p.getName(), p.size(), p.getBlockCount(), p.getBlocksCount(), p.getVariantCount(), p.getFromPaletteCount());
                 
                 // Одиночные блоки
@@ -54,6 +55,7 @@ public class CompiledPalette {
                     if (state != null) {
                         palette.put(c, state);
                         if (p.getLoot(c) != null) lootMap.put(c, p.getLoot(c));
+                        if (p.getMobId(c) != null) mobIdMap.put(c, p.getMobId(c));
                         if (p.isTorch(c)) torchMap.put(c, true);
                         singleBlocksAdded++;
                         ModLogger.debug("    Character '{}': block '{}'", c, blockId);
@@ -62,7 +64,7 @@ public class CompiledPalette {
                     }
                 }
                 if (singleBlocksAdded > 0) {
-                    ModLogger.info("    Added {} single blocks from palette '{}'", singleBlocksAdded, p.getName());
+                    ModLogger.debug("    Added {} single blocks from palette '{}'", singleBlocksAdded, p.getName());
                 }
                 
                 // Массивы блоков с random
@@ -78,13 +80,13 @@ public class CompiledPalette {
                         if (p.getLoot(c) != null) lootMap.put(c, p.getLoot(c));
                         if (p.isTorch(c)) torchMap.put(c, true);
                         arraysAdded++;
-                        ModLogger.info("    Character '{}': random blocks array ({} blocks)", c, randomBlocks.length);
+                        ModLogger.debug("    Character '{}': random blocks array ({} blocks)", c, randomBlocks.length);
                     } else {
                         ModLogger.warn("    Character '{}': failed to build random blocks array", c);
                     }
                 }
                 if (arraysAdded > 0) {
-                    ModLogger.info("    Added {} random block arrays from palette '{}'", arraysAdded, p.getName());
+                    ModLogger.debug("    Added {} random block arrays from palette '{}'", arraysAdded, p.getName());
                 }
                 
                 // Variant ссылки (разрешаем их)
@@ -110,7 +112,7 @@ public class CompiledPalette {
                             if (p.getLoot(c) != null) lootMap.put(c, p.getLoot(c));
                             if (p.isTorch(c)) torchMap.put(c, true);
                             variantsResolved++;
-                            ModLogger.info("    Character '{}': variant '{}' resolved to {} blocks",
+                            ModLogger.debug("    Character '{}': variant '{}' resolved to {} blocks",
                                 c, variantName, randomBlocks.length);
                         } else {
                             ModLogger.warn("    Character '{}': variant '{}' resolved but no valid blocks", c, variantName);
@@ -121,7 +123,7 @@ public class CompiledPalette {
                     }
                 }
                 if (variantsResolved > 0) {
-                    ModLogger.info("    Resolved {} variants from palette '{}'", variantsResolved, p.getName());
+                    ModLogger.debug("    Resolved {} variants from palette '{}'", variantsResolved, p.getName());
                 }
                 
                 // frompalette ссылки (сохраняем для разрешения во втором проходе)
@@ -143,7 +145,7 @@ public class CompiledPalette {
         // Второй проход: разрешаем frompalette ссылки (итеративно)
         resolveFromPaletteReferences();
         
-        ModLogger.info("CompiledPalette created: {} entries", palette.size());
+        ModLogger.debug("CompiledPalette created: {} entries", palette.size());
         if (palette.size() == 0) {
             ModLogger.error("WARNING: CompiledPalette is EMPTY! No symbols loaded!");
         }
@@ -464,6 +466,10 @@ public class CompiledPalette {
 
     public String getLoot(char c) {
         return lootMap.get(c);
+    }
+
+    public String getMobId(char c) {
+        return mobIdMap.get(c);
     }
 
     public boolean isTorch(char c) {

@@ -28,6 +28,7 @@ public class CityStyle {
     private final Identifier name;
     private String style;  // Имя Style для получения палитр
     private final String inherit;  // Наследование от другого CityStyle
+    private final List<MultiBuildingChoice> buildingChoices = new ArrayList<>();
     private final List<MultiBuildingChoice> multibuildingChoices = new ArrayList<>();
     
     // Building settings
@@ -200,11 +201,21 @@ public class CityStyle {
             this.sphereSideBlock = null;
             this.sphereGlassBlock = null;
         }
-        if (json.selectors != null && json.selectors.multibuildings != null) {
-            for (CityStyleJson.FactorValueJson fv : json.selectors.multibuildings) {
-                if (fv != null && fv.value != null && !fv.value.isBlank()) {
-                    float fac = fv.factor != null ? fv.factor : 1.0f;
-                    multibuildingChoices.add(new MultiBuildingChoice(fac, fv.value));
+        if (json.selectors != null) {
+            if (json.selectors.buildings != null) {
+                for (CityStyleJson.FactorValueJson fv : json.selectors.buildings) {
+                    if (fv != null && fv.value != null && !fv.value.isBlank()) {
+                        float fac = fv.factor != null ? fv.factor : 1.0f;
+                        buildingChoices.add(new MultiBuildingChoice(fac, fv.value));
+                    }
+                }
+            }
+            if (json.selectors.multibuildings != null) {
+                for (CityStyleJson.FactorValueJson fv : json.selectors.multibuildings) {
+                    if (fv != null && fv.value != null && !fv.value.isBlank()) {
+                        float fac = fv.factor != null ? fv.factor : 1.0f;
+                        multibuildingChoices.add(new MultiBuildingChoice(fac, fv.value));
+                    }
                 }
             }
         }
@@ -221,6 +232,14 @@ public class CityStyle {
         // Наследуем style если не задан
         if (this.style == null && inheritFrom.style != null) {
             this.style = inheritFrom.style;
+        }
+
+        // Наследуем селекторы зданий если не заданы
+        if (this.buildingChoices.isEmpty() && !inheritFrom.buildingChoices.isEmpty()) {
+            this.buildingChoices.addAll(inheritFrom.buildingChoices);
+        }
+        if (this.multibuildingChoices.isEmpty() && !inheritFrom.multibuildingChoices.isEmpty()) {
+            this.multibuildingChoices.addAll(inheritFrom.multibuildingChoices);
         }
         
         // Наследуем building settings если не заданы
@@ -401,6 +420,25 @@ public class CityStyle {
 
     public Character getParkElevationBlock() {
         return parkElevationBlock;
+    }
+
+    public String getRandomBuilding(Random rand) {
+        if (buildingChoices.isEmpty()) {
+            return null;
+        }
+        float totalFactor = 0;
+        for (MultiBuildingChoice choice : buildingChoices) {
+            totalFactor += choice.factor;
+        }
+        if (totalFactor <= 0) return null;
+        float r = rand.nextFloat() * totalFactor;
+        for (MultiBuildingChoice choice : buildingChoices) {
+            r -= choice.factor;
+            if (r <= 0) {
+                return choice.value;
+            }
+        }
+        return buildingChoices.get(buildingChoices.size() - 1).value;
     }
 
     public Float getCorridorChance() {
