@@ -2,8 +2,12 @@ package mcjty.lostcities.worldgen;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.StairsShape;
 import net.minecraft.world.level.block.state.properties.WallSide;
@@ -43,6 +47,7 @@ public class ChunkDriver {
         BulkSectionAccess bulk = new BulkSectionAccess(region);
         cache.generate(bulk);
         bulk.close();
+        removeInvalidBlockEntities(chunk);
 
         BlockState bedrock = Blocks.BEDROCK.defaultBlockState();
         for (int x = 0 ; x < 16 ; x++) {
@@ -58,6 +63,26 @@ public class ChunkDriver {
         }
 
         cache.clear();
+    }
+
+    private static void removeInvalidBlockEntities(ChunkAccess chunk) {
+        for (BlockPos pos : chunk.getBlockEntitiesPos()) {
+            BlockState state = chunk.getBlockState(pos);
+            CompoundTag tag = chunk.getBlockEntityNbt(pos);
+            if (!state.hasBlockEntity() || tag != null && !isValidBlockEntity(tag, state)) {
+                chunk.removeBlockEntity(pos);
+            }
+        }
+    }
+
+    private static boolean isValidBlockEntity(CompoundTag tag, BlockState state) {
+        String id = tag.getStringOr("id", "");
+        if ("DUMMY".equals(id)) {
+            return true;
+        }
+        Identifier identifier = Identifier.tryParse(id);
+        BlockEntityType<?> type = identifier == null ? null : BuiltInRegistries.BLOCK_ENTITY_TYPE.getValue(identifier);
+        return type != null && type.isValid(state);
     }
 
     private void setBlock(BlockPos p, BlockState state) {

@@ -1,6 +1,7 @@
 package mcjty.lostcities.api;
 
 import net.minecraft.resources.Identifier;
+import mcjty.lostcities.worldgen.street.PlannedRoadType;
 
 public class LostChunkCharacteristics {
     public boolean isCity;
@@ -13,4 +14,6 @@ public class LostChunkCharacteristics {
     public ILostCityMultiBuilding multiBuilding;
     public Identifier buildingTypeId;
     public ILostCityBuilding buildingType;
+    public PlannedRoadType rawPlannedRoadType = PlannedRoadType.NONE;
+    public PlannedRoadType plannedRoadType = PlannedRoadType.NONE;
 }
