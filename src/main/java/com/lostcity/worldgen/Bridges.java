@@ -46,7 +46,7 @@ public final class Bridges {
             for (int z = 0; z < 16; z++) {
                 for (int slice = 0; slice < sliceCount; slice++) {
                     int y = startY + slice;
-                    if (y >= driver.world.getTopY()) break;
+                    if (y >= Heights.topY(driver.world)) break;
 
                     char c = xOrientation ? part.getChar(x, slice, z) : part.getChar(z, slice, x);
                     if (c == ' ' || c == '\0') continue;

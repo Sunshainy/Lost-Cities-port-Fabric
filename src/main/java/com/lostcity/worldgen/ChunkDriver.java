@@ -56,7 +56,7 @@ public class ChunkDriver {
             return;
         }
         
-        if (y < world.getBottomY() || y >= world.getTopY()) {
+        if (y < world.getBottomY() || y >= Heights.topY(world)) {
             // Выходит за границы мира - пропускаем
             return;
         }
@@ -90,7 +90,7 @@ public class ChunkDriver {
      */
     public void setBlockNoNeighbors(int localX, int y, int localZ, BlockState state) {
         if (localX < 0 || localX > 15 || localZ < 0 || localZ > 15) return;
-        if (y < world.getBottomY() || y >= world.getTopY()) return;
+        if (y < world.getBottomY() || y >= Heights.topY(world)) return;
         int absoluteX = baseX + localX;
         int absoluteZ = baseZ + localZ;
         BlockPos pos = new BlockPos(absoluteX, y, absoluteZ);
@@ -141,8 +141,20 @@ public class ChunkDriver {
                 
                 // Обновляем форму соседнего блока на основе размещённого.
                 // Вызываем через BlockState, а не через Block: в 1.20.5 метод на
-                // AbstractBlock стал protected, а публичный делегат на состоянии
-                // существует во всех поддерживаемых версиях.
+                // AbstractBlock стал protected.
+                // В 1.21.2 у метода поменялся порядок и состав аргументов: добавились
+                // ScheduledTickView и Random, позиции переехали местами.
+                //? if >=1.21.2 {
+                /*BlockState updatedNeighbor = neighborState.getStateForNeighborUpdate(
+                    world,
+                    world,
+                    neighborPos,
+                    direction,
+                    pos,
+                    placedState,
+                    net.minecraft.util.math.random.Random.create(neighborPos.asLong())
+                );
+                *///?} else {
                 BlockState updatedNeighbor = neighborState.getStateForNeighborUpdate(
                     direction,
                     placedState,
@@ -150,6 +162,7 @@ public class ChunkDriver {
                     neighborPos,
                     pos
                 );
+                //?}
                 
                 if (updatedNeighbor != neighborState) {
                     // Обновляем соседний блок, если его состояние изменилось

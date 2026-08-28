@@ -38,3 +38,10 @@ mod.mc_releases = ["1.21", "1.21.1"]
 
 deps.yarn_mappings = "1.21.1+build.3"
 deps.fabric_api = "0.116.15+1.21.1"
+
+["1.21.4"]
+mod.mc_compat = ">=1.21.2 <=1.21.4"
+mod.mc_releases = ["1.21.2", "1.21.3", "1.21.4"]
+
+deps.yarn_mappings = "1.21.4+build.8"
+deps.fabric_api = "0.119.4+1.21.4"

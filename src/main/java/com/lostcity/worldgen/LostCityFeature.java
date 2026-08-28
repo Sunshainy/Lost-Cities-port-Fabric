@@ -406,7 +406,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         int waterLevel = info.getWaterLevel();
         for (int slice = 0; slice < part.getSliceCount(); slice++) {
             int y = baseY + slice;
-            if (y < driver.world.getBottomY() || y >= driver.world.getTopY()) continue;
+            if (y < driver.world.getBottomY() || y >= Heights.topY(driver.world)) continue;
             for (int px = 0; px < part.getXSize() && px < 16; px++) {
                 for (int pz = 0; pz < part.getZSize() && pz < 16; pz++) {
                     char c = part.getChar(px, slice, pz);
@@ -641,7 +641,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
     private void setBlocksFromPalette(ChunkDriver driver, int x, int yLo, int z, int yHi, CompiledPalette palette, char c,
             net.minecraft.util.math.random.Random rand) {
         for (int y = yLo; y <= yHi; y++) {
-            if (y < driver.world.getBottomY() || y >= driver.world.getTopY()) continue;
+            if (y < driver.world.getBottomY() || y >= Heights.topY(driver.world)) continue;
             BlockState s = palette.get(c, rand);
             if (s != null) driver.setBlockNoNeighbors(x, y, z, s);
         }
@@ -655,7 +655,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         int maxHeight = ground + info.getBuildingHeight(); // Максимальная высота здания
         int fromY = Math.max(driver.world.getBottomY() + 1, ground + 3);
         // Не выше здания!
-        int toY = Math.min(maxHeight, driver.world.getTopY() - 1);
+        int toY = Math.min(maxHeight, Heights.topY(driver.world) - 1);
         if (fromY >= toY) return;
         
         java.util.Random r = new java.util.Random(chunkZ * 341873128712L + chunkX * 132897987541L);
@@ -720,7 +720,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                     // Оригинал: идёт вниз до не-воздуха, затем ставит листья
                     int y = ground;
                     while (y > 0 && driver.getBlock(x, y, z).isAir()) y--;
-                    for (int ly = Math.max(y, ground); ly <= ground + 4 && ly < driver.world.getTopY(); ly++) {
+                    for (int ly = Math.max(y, ground); ly <= ground + 4 && ly < Heights.topY(driver.world); ly++) {
                         if (driver.getBlock(x, ly, z).isAir()) driver.setBlockNoNeighbors(x, ly, z, leaf);
                     }
                 }
@@ -735,7 +735,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                     if (r.nextFloat() >= v) continue;
                     int y = ground;
                     while (y > 0 && driver.getBlock(x, y, z).isAir()) y--;
-                    for (int ly = Math.max(y, ground); ly <= ground + 4 && ly < driver.world.getTopY(); ly++) {
+                    for (int ly = Math.max(y, ground); ly <= ground + 4 && ly < Heights.topY(driver.world); ly++) {
                         if (driver.getBlock(x, ly, z).isAir()) driver.setBlockNoNeighbors(x, ly, z, leaf);
                     }
                 }
@@ -750,7 +750,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                     if (r.nextFloat() >= v) continue;
                     int y = ground;
                     while (y > 0 && driver.getBlock(x, y, z).isAir()) y--;
-                    for (int ly = Math.max(y, ground); ly <= ground + 4 && ly < driver.world.getTopY(); ly++) {
+                    for (int ly = Math.max(y, ground); ly <= ground + 4 && ly < Heights.topY(driver.world); ly++) {
                         if (driver.getBlock(x, ly, z).isAir()) driver.setBlockNoNeighbors(x, ly, z, leaf);
                     }
                 }
@@ -765,7 +765,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                     if (r.nextFloat() >= v) continue;
                     int y = ground;
                     while (y > 0 && driver.getBlock(x, y, z).isAir()) y--;
-                    for (int ly = Math.max(y, ground); ly <= ground + 4 && ly < driver.world.getTopY(); ly++) {
+                    for (int ly = Math.max(y, ground); ly <= ground + 4 && ly < Heights.topY(driver.world); ly++) {
                         if (driver.getBlock(x, ly, z).isAir()) driver.setBlockNoNeighbors(x, ly, z, leaf);
                     }
                 }
@@ -1033,7 +1033,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         int sz = part.getZSize();
         for (int slice = 0; slice < part.getSliceCount(); slice++) {
             int y = baseY + slice;
-            if (y < driver.world.getBottomY() || y >= driver.world.getTopY()) continue;
+            if (y < driver.world.getBottomY() || y >= Heights.topY(driver.world)) continue;
 
             for (int px = 0; px < sx && px < 16; px++) {
                 for (int pz = 0; pz < sz && pz < 16; pz++) {
@@ -1177,7 +1177,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         int sz = part.getZSize();
         for (int slice = 0; slice < part.getSliceCount(); slice++) {
             int y = baseY + slice;
-            if (y < driver.world.getBottomY() || y >= driver.world.getTopY()) continue;
+            if (y < driver.world.getBottomY() || y >= Heights.topY(driver.world)) continue;
             for (int px = 0; px < sx && px < 16; px++) {
                 for (int pz = 0; pz < sz && pz < 16; pz++) {
                     char c = part.getChar(px, slice, pz);
@@ -1207,7 +1207,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
     private void makeRoomForBuilding(ChunkDriver driver, BuildingInfo info, int lowestLevel, CompiledPalette palette, Building building) {
         if (!info.hasBuilding) return;
         int topClear = info.getCityGroundLevel() + info.getNumFloors() * FLOOR_HEIGHT; // до крыши
-        topClear = Math.min(topClear, driver.world.getTopY() - 1);
+        topClear = Math.min(topClear, Heights.topY(driver.world) - 1);
 
         char borderChar = 'y'; // стандартный border из citystyle_common
         BlockState filler = palette.get(building.getFiller());
@@ -1253,7 +1253,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
 
         for (int slice = 0; slice < 6; slice++) {
             int y = baseY + slice;
-            if (y >= driver.world.getTopY()) break;
+            if (y >= Heights.topY(driver.world)) break;
             for (int x = 0; x < 16; x++) {
                 for (int z = 0; z < 16; z++) {
                     BlockState block = driver.getBlock(x, y, z);
@@ -1275,7 +1275,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
             String[] parts = posStr.split(",");
             int x = Integer.parseInt(parts[0]);
             int z = Integer.parseInt(parts[1]);
-            for (int y = clearFromY; y <= clearToY && y < driver.world.getTopY(); y++) {
+            for (int y = clearFromY; y <= clearToY && y < Heights.topY(driver.world); y++) {
                 BlockState b = driver.getBlock(x, y, z);
                 if (!b.isAir() && b.getBlock() != Blocks.STRUCTURE_VOID) {
                     driver.setBlockNoNeighbors(x, y, z, air);
@@ -1400,7 +1400,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         net.minecraft.util.math.random.Random rand = net.minecraft.util.math.random.Random.create(seed);
         for (int slice = 0; slice < part.getSliceCount(); slice++) {
             int y = baseY + slice;
-            if (y < driver.world.getBottomY() || y >= driver.world.getTopY()) continue;
+            if (y < driver.world.getBottomY() || y >= Heights.topY(driver.world)) continue;
             for (int px = 0; px < part.getXSize() && px < 16; px++) {
                 for (int pz = 0; pz < part.getZSize() && pz < 16; pz++) {
                     char c = part.getChar(px, slice, pz);
@@ -1725,7 +1725,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
      * @return true если колонка void (пустая от верха до низа)
      */
     private static boolean isVoidAt(ChunkDriver driver, int x, int z) {
-        int maxY = driver.world.getTopY() - 1;
+        int maxY = Heights.topY(driver.world) - 1;
         int minY = driver.world.getBottomY();
         
         // Проверяем колонку сверху вниз
@@ -1760,7 +1760,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         BuildingInfo.MinMax mm11 = info.getXmax().getZmax().getDesiredMaxHeightL2();
         
         int min = driver.world.getBottomY();
-        int max = driver.world.getTopY() - 1;
+        int max = Heights.topY(driver.world) - 1;
         
         float min00 = mm00.min;
         float min10 = mm10.min;

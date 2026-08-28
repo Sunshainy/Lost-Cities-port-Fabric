@@ -33,7 +33,10 @@ public class Stuff {
                     if (inBuilding == null || inBuilding == info.hasBuilding) {
                         if (stuff.buildingMatcher.isAny() || stuff.buildingMatcher.test(info.buildingType, null, null)) {
                             if (stuff.biomeMatcher.isAny() || stuff.biomeMatcher.test(biome, null, null)) { // Need to get ID and tags for biome actually
-                                net.minecraft.util.Identifier biomeId = driver.world.getRegistryManager().get(net.minecraft.registry.RegistryKeys.BIOME).getId(biome);
+                                net.minecraft.util.Identifier biomeId = driver.world.getRegistryManager()
+                                    .getOptional(net.minecraft.registry.RegistryKeys.BIOME)
+                                    .map(registry -> registry.getId(biome))
+                                    .orElse(null);
                                 if (stuff.biomeMatcher.test(biome, biomeId, null)) {
                                     actuallyGenerateStuff(feature, driver, info, stuff, palette, inBuilding == Boolean.TRUE, rand);
                                 }
