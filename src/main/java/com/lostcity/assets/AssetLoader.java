@@ -45,7 +45,7 @@ public class AssetLoader implements SimpleSynchronousResourceReloadListener {
 
         ModLogger.info("Found {} JSON assets in 'lostcities' folder (from mod resources and datapacks)", all.size());
         
-        int palettes = 0, parts = 0, buildings = 0, variants = 0, multibuildings = 0, predefinedCities = 0, citystyles = 0;
+        int palettes = 0, parts = 0, buildings = 0, variants = 0, multibuildings = 0, predefinedCities = 0, citystyles = 0, stuffs = 0;
 
         // Загружаем варианты ПЕРВЫМИ (они нужны для разрешения variant в палитрах)
         for (Map.Entry<Identifier, net.minecraft.resource.Resource> e : all.entrySet()) {
@@ -54,7 +54,7 @@ public class AssetLoader implements SimpleSynchronousResourceReloadListener {
             if (!path.contains("/variants/")) continue;
             if (loadVariant(id, path, e.getValue())) variants++;
         }
-        
+
         // Затем палитры (могут использовать варианты)
         for (Map.Entry<Identifier, net.minecraft.resource.Resource> e : all.entrySet()) {
             Identifier id = e.getKey();
@@ -79,6 +79,12 @@ public class AssetLoader implements SimpleSynchronousResourceReloadListener {
             String path = id.getPath();
             if (!path.contains("/multibuildings/")) continue;
             if (loadMultiBuilding(id, path, e.getValue())) multibuildings++;
+        }
+        for (Map.Entry<Identifier, net.minecraft.resource.Resource> e : all.entrySet()) {
+            Identifier id = e.getKey();
+            String path = id.getPath();
+            if (!path.contains("/stuff/")) continue;
+            if (loadStuff(id, path, e.getValue())) stuffs++;
         }
         
         // Этап 1.3: Загружаем predefined cities
@@ -123,6 +129,25 @@ public class AssetLoader implements SimpleSynchronousResourceReloadListener {
                 common != null, common != null ? common.size() : 0,
                 defaultPal != null, defaultPal != null ? defaultPal.size() : 0,
                 AssetRegistries.getPalette("lostcities:bricks_standard") != null);
+        }
+    }
+
+    private static boolean loadStuff(Identifier id, String path, net.minecraft.resource.Resource r) {
+        String name = assetId(id, "stuff");
+        try {
+            try (java.io.Reader reader = new java.io.InputStreamReader(r.getInputStream(), java.nio.charset.StandardCharsets.UTF_8)) {
+                StuffJson j = GSON.fromJson(reader, StuffJson.class);
+                if (j == null) {
+                    ModLogger.warn("Empty stuff JSON for {}", name);
+                    return false;
+                }
+                StuffObject stuff = new StuffObject(name, j);
+                AssetRegistries.putStuff(stuff);
+                return true;
+            }
+        } catch (Exception ex) {
+            ModLogger.warn("Failed to load stuff {}: {}", name, ex.getMessage());
+            return false;
         }
     }
 
@@ -202,6 +227,9 @@ public class AssetLoader implements SimpleSynchronousResourceReloadListener {
                     if (e.loot != null && !e.loot.isBlank()) {
                         p.putLoot(c, e.loot);
                     }
+                    if (e.mobid != null && !e.mobid.isBlank()) {
+                        p.putMobId(c, e.mobid);
+                    }
                     if (e.torch != null) {
                         p.putTorch(c, e.torch);
                     }
@@ -262,13 +290,15 @@ public class AssetLoader implements SimpleSynchronousResourceReloadListener {
                 boolean allowDoors = j.allowDoors != null ? j.allowDoors : true;
                 float prefersLonely = j.prefersLonely != null ? j.prefersLonely : 0.0f;
                 int maxCellars = j.maxCellars != null ? j.maxCellars : -1;
-                Building b = new Building(name, fill, rub, j.refPalette, allowDoors, prefersLonely, maxCellars);
+                int minFloors = j.minFloors != null ? j.minFloors : -1;
+                int maxFloors = j.maxFloors != null ? j.maxFloors : -1;
+                Building b = new Building(name, fill, rub, j.refPalette, allowDoors, prefersLonely, maxCellars, minFloors, maxFloors);
                 for (PartRefJson pr : j.parts) {
-                    if (pr != null && pr.part != null) b.addPart(pr.top, pr.part);
+                    if (pr != null && pr.part != null) b.addPart(pr.top, pr.part, pr.floor, pr.range);
                 }
                 if (j.parts2 != null) {
                     for (PartRefJson pr : j.parts2) {
-                        if (pr != null && pr.part != null) b.addPart2(pr.top, pr.part);
+                        if (pr != null && pr.part != null) b.addPart2(pr.top, pr.part, pr.floor, pr.range);
                     }
                 }
                 AssetRegistries.putBuilding(name, b);

@@ -15,8 +15,8 @@ public final class PerlinNoiseGenerator14 {
     public PerlinNoiseGenerator14(long seed, int levelsIn) {
         this.levelsCount = levelsIn;
         this.levels = new SimplexNoiseSampler[levelsIn];
+        Random r = Random.create(seed);
         for (int i = 0; i < levelsIn; i++) {
-            Random r = Random.create(seed);
             this.levels[i] = new SimplexNoiseSampler(r);
         }
     }

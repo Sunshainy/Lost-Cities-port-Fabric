@@ -45,7 +45,7 @@ logs/
 
 # minecraft
 saves/
-config/
+/config/
 
 # temp files
 *.tmp

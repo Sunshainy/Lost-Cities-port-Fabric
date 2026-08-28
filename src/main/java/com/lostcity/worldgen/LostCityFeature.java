@@ -202,6 +202,9 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         
         // Мостики между чанками
         Bridges.generateBridges(driver, info);
+
+        Stuff.generateStuff(this, driver, info);
+        info.executePostTodos();
     }
 
     private void doGenerateCityChunk(StructureWorldAccess world, Chunk chunk, int chunkX, int chunkZ,
@@ -261,6 +264,9 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         if (info.highwayXLevel >= 0 || info.highwayZLevel >= 0) {
             generateHighways(driver, info, chunkX, chunkZ);
         }
+
+        Stuff.generateStuff(this, driver, info);
+        info.executePostTodos();
     }
 
     private static final int FLOOR_HEIGHT = 6;
@@ -410,9 +416,9 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                     if (state.getBlock() instanceof net.minecraft.block.StructureVoidBlock) {
                         state = y < waterLevel ? Blocks.WATER.getDefaultState() : Blocks.AIR.getDefaultState();
                     }
-                    // КРИТИЧНО: ротация должна учитывать реальный размер части (иначе лестницы/мелкие части поворачиваются неверно).
-                    int lx = transform.rotateX(px, pz, part.getXSize(), part.getZSize());
-                    int lz = transform.rotateZ(px, pz, part.getXSize(), part.getZSize());
+                    // ВАЖНО: в оригинале ротация ВСЕГДА происходит относительно чанка 16x16, независимо от размера part!
+                    int lx = transform.rotateX(px, pz);
+                    int lz = transform.rotateZ(px, pz);
                     if (lx < 0 || lx > 15 || lz < 0 || lz > 15) continue;
                     BlockState corrected = correctBlockState(state, lx, y, lz, driver);
                     if (corrected != null) driver.setBlock(lx, y, lz, corrected);
@@ -439,7 +445,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         int oy = info.getCityGroundLevel() + 1;
         CompiledPalette streetPalette = AssetRegistries.getStreetPalette();
         if (streetPalette == null) return;
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         generatePartForStreet(driver, part, transform, oy, streetPalette, seed);
     }
     
@@ -541,7 +547,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         char borderChar = 'y';
         char wallChar = 'w';
         int ground = info.getCityGroundLevel();
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         var rand = net.minecraft.util.math.random.Random.create(seed);
         boolean canDoParks = true;
 
@@ -902,8 +908,9 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
             ModLogger.info("Available parts: {}", building.getParts().size());
         }
 
-        java.util.Random part2Rand = new java.util.Random(
-            (long) chunkX * 31L + (long) chunkZ * 17L + 7L);
+        int seedX = info.multiBuildingPos.isMulti() ? (info.chunkPos.x - info.multiBuildingPos.x()) : info.chunkPos.x;
+        int seedZ = info.multiBuildingPos.isMulti() ? (info.chunkPos.z - info.multiBuildingPos.z()) : info.chunkPos.z;
+        java.util.Random part2Rand = new java.util.Random((long) seedX * 31L + (long) seedZ * 17L + 7L);
 
         for (int floor = -info.cellars; floor <= info.floors; floor++) {
             generateFloor(driver, building, compiledPalette, info, floor, chunkX, chunkZ, buildingRotation);
@@ -913,9 +920,10 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                 int baseY = info.getYForFloor(floor);
                 Doors.generateDoors(driver, info, baseY + 1, floor, compiledPalette);
             }
-            if (!building.getParts2().isEmpty()) {
+            if (!building.getParts2().isEmpty() && floor > -info.cellars) {
+                final int currentFloor = floor;
                 List<Building.PartRef> matching = building.getParts2().stream()
-                    .filter(pr -> pr.top == isTop).toList();
+                    .filter(pr -> pr.isValidForFloor(currentFloor, isTop)).toList();
                 if (!matching.isEmpty()) {
                     Building.PartRef pr2 = matching.get(part2Rand.nextInt(matching.size()));
                     BuildingPart part2 = resolvePart(pr2.part);
@@ -933,6 +941,10 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
             createStairOpenings(driver, info, floor, buildingRotation);
         }
         
+        if (info.cellars >= 1) {
+            Corridors.generateCorridorConnections(driver, info);
+        }
+        
         if (callCount <= 5) {
             ModLogger.info("Building generation complete for chunk ({}, {})", chunkX, chunkZ);
         }
@@ -943,17 +955,27 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
      */
     private void generateFloor(ChunkDriver driver, Building building, CompiledPalette compiledPalette,
                                BuildingInfo info, int floorIndex, int chunkX, int chunkZ, Transform buildingRotation) {
-        // Правильный выбор части для этажа:
-        // - Для последнего этажа (floorIndex == info.floors) - ищем часть с top=true
-        // - Для остальных этажей - ищем часть с top=false
         boolean isTopFloor = (floorIndex == info.floors);
         Building.PartRef partRef = null;
         
-        // Сначала ищем точное совпадение
+        List<Building.PartRef> validParts = new ArrayList<>();
         for (Building.PartRef pr : building.getParts()) {
-            if (pr.top == isTopFloor) {
-                partRef = pr;
-                break;
+            if (pr.isValidForFloor(floorIndex, isTopFloor)) {
+                validParts.add(pr);
+            }
+        }
+        
+        if (!validParts.isEmpty()) {
+            int seedX = info.multiBuildingPos.isMulti() ? (info.chunkPos.x - info.multiBuildingPos.x()) : info.chunkPos.x;
+            int seedZ = info.multiBuildingPos.isMulti() ? (info.chunkPos.z - info.multiBuildingPos.z()) : info.chunkPos.z;
+            net.minecraft.util.math.random.Random floorRand = net.minecraft.util.math.random.Random.create((long) seedX * 341873128712L + (long) seedZ * 132897987541L + floorIndex * 17L);
+            partRef = validParts.get(floorRand.nextInt(validParts.size()));
+        } else {
+            for (Building.PartRef pr : building.getParts()) {
+                if (pr.top == isTopFloor) {
+                    partRef = pr;
+                    break;
+                }
             }
         }
         
@@ -1051,21 +1073,53 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                     blocksPlaced++;
 
                     // Сундуки с лутом (оригинал: handleLoot)
-                    String lootCond = partCompiledPalette.getLoot(c);
-                    if (lootCond != null && !lootCond.isBlank() && info.config.getActiveProfile().getGenerateLoot()) {
-                        if (correctedState.getBlock() == Blocks.CHEST || correctedState.getBlock() == Blocks.TRAPPED_CHEST) {
-                            BlockPos pos = driver.getBlockPos(lx, y, lz);
-                            var be = driver.world.getBlockEntity(pos);
-                            if (be instanceof LootableContainerBlockEntity lootable) {
+                    if (!info.noLoot) {
+                        String lootCond = partCompiledPalette.getLoot(c);
+                        if (lootCond != null && !lootCond.isBlank() && info.config.getActiveProfile().getGenerateLoot()) {
+                            if (correctedState.getBlock() == Blocks.CHEST || correctedState.getBlock() == Blocks.TRAPPED_CHEST || correctedState.getBlock() == Blocks.BARREL) {
+                                BlockPos pos = driver.getBlockPos(lx, y, lz);
                                 Identifier lootId = "chestloot".equals(lootCond)
                                     ? new Identifier(LostCityMod.MOD_ID, "chests/lostcitychest")
                                     : lootCond.contains(":") ? Identifier.tryParse(lootCond) : new Identifier(LostCityMod.MOD_ID, lootCond);
                                 if (lootId != null) {
-                                    long seed = (long) info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L + lx * 31L + lz * 17L + y;
-                                    lootable.setLootTable(lootId, seed);
+                                    info.addPostTodo(() -> {
+                                        var be = driver.world.getBlockEntity(pos);
+                                        if (be instanceof LootableContainerBlockEntity lootable) {
+                                            long seed = (long) info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L + pos.getX() * 31L + pos.getZ() * 17L + pos.getY();
+                                            lootable.setLootTable(lootId, seed);
+                                        }
+                                    });
                                 }
                             }
                         }
+
+                        // Спавнеры мобов (оригинал: handleSpawner)
+                        String mobId = partCompiledPalette.getMobId(c);
+                        boolean isSpawnerBlock = correctedState.getBlock() == Blocks.SPAWNER;
+                        if ((mobId != null && !mobId.isBlank()) || isSpawnerBlock) {
+                            if (info.config.getActiveProfile().getGenerateSpawners()) {
+                                final String finalMobId = (mobId != null && !mobId.isBlank()) ? mobId : "minecraft:zombie";
+                                BlockPos pos = driver.getBlockPos(lx, y, lz);
+                                info.addPostTodo(() -> {
+                                    var be = driver.world.getBlockEntity(pos);
+                                    if (be instanceof net.minecraft.block.entity.MobSpawnerBlockEntity spawner) {
+                                        String mobString = finalMobId.contains(":") ? finalMobId : "minecraft:" + finalMobId;
+                                        net.minecraft.nbt.NbtCompound nbt = spawner.createNbt();
+                                        net.minecraft.nbt.NbtCompound spawnData = new net.minecraft.nbt.NbtCompound();
+                                        net.minecraft.nbt.NbtCompound entity = new net.minecraft.nbt.NbtCompound();
+                                        entity.putString("id", mobString);
+                                        spawnData.put("entity", entity);
+                                        nbt.put("SpawnData", spawnData);
+                                        spawner.readNbt(nbt);
+                                    }
+                                });
+                            } else if (isSpawnerBlock) {
+                                driver.setBlock(lx, y, lz, Blocks.AIR.getDefaultState());
+                            }
+                        }
+                    } else if (correctedState.getBlock() == Blocks.SPAWNER) {
+                        // Если noLoot=true, удаляем спавнеры
+                        driver.setBlock(lx, y, lz, Blocks.AIR.getDefaultState());
                     }
                 }
             }
@@ -1236,7 +1290,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
             case PARK -> generateParkSection(info, height, streetPalette, driver);
         }
         int frontHeight = height + 1;
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         generateFrontPart(driver, info, info.getXmin(), Transform.ROTATE_NONE, frontHeight, streetPalette, seed);
         generateFrontPart(driver, info, info.getZmin(), Transform.ROTATE_90, frontHeight, streetPalette, seed);
         generateFrontPart(driver, info, info.getXmax(), Transform.ROTATE_180, frontHeight, streetPalette, seed);
@@ -1259,7 +1313,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         boolean zmin = BuildingInfo.hasRoadConnection(info, info.getZmin());
         boolean zmax = BuildingInfo.hasRoadConnection(info, info.getZmax());
         int cnt = (xmin ? 1 : 0) + (xmax ? 1 : 0) + (zmin ? 1 : 0) + (zmax ? 1 : 0);
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         Transform transform = Transform.ROTATE_NONE;
         BuildingPart part = null;
         List<String> partIds;
@@ -1308,7 +1362,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
     }
 
     private void generateFullStreetSection(BuildingInfo info, int height, CompiledPalette palette, ChunkDriver driver) {
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         String partId = getRandomPart(StreetParts.DEFAULT.full(), seed);
         BuildingPart part = AssetRegistries.getPart(partId);
         if (part != null) {
@@ -1317,7 +1371,7 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
     }
 
     private void generateParkSection(BuildingInfo info, int height, CompiledPalette palette, ChunkDriver driver) {
-        long seed = info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L;
+        long seed = (driver.world != null ? driver.world.getSeed() : 0) + (long) info.chunkPos.z * 341873128712L + (long) info.chunkPos.x * 132897987541L;
         String partId = getRandomPart(StreetParts.DEFAULT.full(), seed);
         BuildingPart part = AssetRegistries.getPart(partId);
         if (part != null) {
@@ -1342,9 +1396,9 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                     if (c == ' ' || c == '\0') continue;
                     BlockState state = palette.get(c, rand);
                     if (state == null) state = Blocks.STONE_BRICKS.getDefaultState();
-                    // КРИТИЧНО: лестницы (stairs*) не 16×16, поэтому без размера поворот будет неправильный.
-                    int lx = transform.rotateX(px, pz, part.getXSize(), part.getZSize());
-                    int lz = transform.rotateZ(px, pz, part.getXSize(), part.getZSize());
+                    // ВАЖНО: в оригинале ротация ВСЕГДА происходит относительно чанка 16x16, независимо от размера part!
+                    int lx = transform.rotateX(px, pz);
+                    int lz = transform.rotateZ(px, pz);
                     if (lx < 0 || lx > 15 || lz < 0 || lz > 15) continue;
                     
                     // ВАЖНО: применяем ротацию к BlockState ПЕРЕД correctBlockState (как в оригинале)
@@ -1411,17 +1465,33 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
         
         // Обрабатываем HorizontalConnectingBlock (Fabric/Yarn: стеклянные панели, заборы)
         if (state.getBlock() instanceof net.minecraft.block.HorizontalConnectingBlock) {
-            state = state.with(net.minecraft.block.HorizontalConnectingBlock.WEST, canAttach(westState));
-            state = state.with(net.minecraft.block.HorizontalConnectingBlock.EAST, canAttach(eastState));
-            state = state.with(net.minecraft.block.HorizontalConnectingBlock.NORTH, canAttach(northState));
-            state = state.with(net.minecraft.block.HorizontalConnectingBlock.SOUTH, canAttach(southState));
+            boolean w = canAttach(westState);
+            boolean e = canAttach(eastState);
+            boolean n = canAttach(northState);
+            boolean s = canAttach(southState);
+            state = state.with(net.minecraft.block.HorizontalConnectingBlock.WEST, w)
+                         .with(net.minecraft.block.HorizontalConnectingBlock.EAST, e)
+                         .with(net.minecraft.block.HorizontalConnectingBlock.NORTH, n)
+                         .with(net.minecraft.block.HorizontalConnectingBlock.SOUTH, s);
+            
+            // Двусторонняя связь: обновляем ранее поставленных соседей (запад и север)
+            updateNeighborPane(driver, localX - 1, y, localZ, net.minecraft.block.HorizontalConnectingBlock.EAST);
+            updateNeighborPane(driver, localX, y, localZ - 1, net.minecraft.block.HorizontalConnectingBlock.SOUTH);
         }
         // Обрабатываем WallBlock (стены) — Yarn: *_SHAPE + WallShape
         else if (state.getBlock() instanceof net.minecraft.block.WallBlock) {
-            state = state.with(net.minecraft.block.WallBlock.WEST_SHAPE, canAttachWall(westState));
-            state = state.with(net.minecraft.block.WallBlock.EAST_SHAPE, canAttachWall(eastState));
-            state = state.with(net.minecraft.block.WallBlock.NORTH_SHAPE, canAttachWall(northState));
-            state = state.with(net.minecraft.block.WallBlock.SOUTH_SHAPE, canAttachWall(southState));
+            net.minecraft.block.enums.WallShape w = canAttachWall(westState);
+            net.minecraft.block.enums.WallShape e = canAttachWall(eastState);
+            net.minecraft.block.enums.WallShape n = canAttachWall(northState);
+            net.minecraft.block.enums.WallShape s = canAttachWall(southState);
+            state = state.with(net.minecraft.block.WallBlock.WEST_SHAPE, w)
+                         .with(net.minecraft.block.WallBlock.EAST_SHAPE, e)
+                         .with(net.minecraft.block.WallBlock.NORTH_SHAPE, n)
+                         .with(net.minecraft.block.WallBlock.SOUTH_SHAPE, s);
+            
+            // Двусторонняя связь для WallBlock: обновляем ранее поставленных соседей
+            updateNeighborWall(driver, localX - 1, y, localZ, net.minecraft.block.WallBlock.EAST_SHAPE, canAttachWall(state));
+            updateNeighborWall(driver, localX, y, localZ - 1, net.minecraft.block.WallBlock.SOUTH_SHAPE, canAttachWall(state));
         }
         // Обрабатываем StairBlock — форма по соседям (оригинал: ChunkDriver.getShapeProperty)
         else if (state.getBlock() instanceof net.minecraft.block.StairsBlock) {
@@ -1479,6 +1549,26 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
      * Важно: НЕ ограничиваемся 0..15, иначе соединяемые блоки (стены/панели) на границе чанка
      * никогда не "увидят" соседа в соседнем чанке и не соединятся.
      */
+    private void updateNeighborPane(ChunkDriver driver, int lx, int y, int lz, net.minecraft.state.property.BooleanProperty sideProp) {
+        BlockState nb = getNeighborBlock(driver, lx, y, lz);
+        if (nb != null && nb.getBlock() instanceof net.minecraft.block.HorizontalConnectingBlock) {
+            nb = nb.with(sideProp, true);
+            int absoluteX = driver.getChunkX() * 16 + lx;
+            int absoluteZ = driver.getChunkZ() * 16 + lz;
+            driver.world.setBlockState(new BlockPos(absoluteX, y, absoluteZ), nb, 2);
+        }
+    }
+
+    private void updateNeighborWall(ChunkDriver driver, int lx, int y, int lz, net.minecraft.state.property.Property<net.minecraft.block.enums.WallShape> shapeProp, net.minecraft.block.enums.WallShape shape) {
+        BlockState nb = getNeighborBlock(driver, lx, y, lz);
+        if (nb != null && nb.getBlock() instanceof net.minecraft.block.WallBlock) {
+            nb = nb.with(shapeProp, shape);
+            int absoluteX = driver.getChunkX() * 16 + lx;
+            int absoluteZ = driver.getChunkZ() * 16 + lz;
+            driver.world.setBlockState(new BlockPos(absoluteX, y, absoluteZ), nb, 2);
+        }
+    }
+
     private BlockState getNeighborBlock(ChunkDriver driver, int localX, int y, int localZ) {
         int absoluteX = driver.getChunkX() * 16 + localX;
         int absoluteZ = driver.getChunkZ() * 16 + localZ;
@@ -1491,14 +1581,20 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
      * Проверить, может ли блок присоединиться к другому блоку
      * Портировано из оригинального ChunkDriver.canAttach()
      */
-    private static boolean canAttach(BlockState state) {
-        if (state.isAir()) {
+    private static boolean canAttach(BlockState neighbor) {
+        if (neighbor == null || neighbor.isAir()) {
             return false;
         }
-        if (state.isOpaque()) {
+        if (neighbor.getBlock() instanceof net.minecraft.block.HorizontalConnectingBlock ||
+            neighbor.getBlock() instanceof net.minecraft.block.PaneBlock ||
+            neighbor.getBlock() instanceof net.minecraft.block.FenceBlock ||
+            neighbor.getBlock() instanceof net.minecraft.block.WallBlock) {
             return true;
         }
-        return !state.getBlock().cannotConnect(state);
+        if (neighbor.isOpaque() || neighbor.isFullCube(net.minecraft.world.EmptyBlockView.INSTANCE, BlockPos.ORIGIN)) {
+            return true;
+        }
+        return !neighbor.isIn(net.minecraft.registry.tag.BlockTags.LEAVES);
     }
     
     /**

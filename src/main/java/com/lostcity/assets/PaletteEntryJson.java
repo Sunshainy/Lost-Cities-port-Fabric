@@ -18,6 +18,8 @@ public class PaletteEntryJson {
     public String fromPalette;
     /** Условие лута (напр. "chestloot"). Оригинал: loot. */
     public String loot;
+    /** Идентификатор моба для спавнера (напр. "minecraft:zombie"). Оригинал: mobid. */
+    public String mobid;
     /** Является ли факелом (отложенная расстановка). Оригинал: torch. */
     public Boolean torch;
 

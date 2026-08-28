@@ -4,7 +4,6 @@ import com.lostcity.LostCityMod;
 import com.lostcity.config.ProfileConfig;
 import com.lostcity.util.TimedCache;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.Heightmap;
 import net.minecraft.world.StructureWorldAccess;
 
 /**
@@ -15,9 +14,9 @@ public final class ChunkHeightmap {
 
     private static final int DEFAULT_GROUND = 71;
 
-    private static final TimedCache<Long, Integer> HEIGHT_CACHE = new TimedCache<>(
+    private static final TimedCache<DimChunk, Integer> HEIGHT_CACHE = new TimedCache<>(
         () -> LostCityMod.getConfig() != null ? LostCityMod.getConfig().getCacheCleanupSeconds() : 300);
-    private static final TimedCache<Long, Integer> CITY_LEVEL_CACHE = new TimedCache<>(
+    private static final TimedCache<DimChunk, Integer> CITY_LEVEL_CACHE = new TimedCache<>(
         () -> LostCityMod.getConfig() != null ? LostCityMod.getConfig().getCacheCleanupSeconds() : 300);
 
     /** Мир текущей генерации (для getCityLevel при вызове из getXmin и т.д.). */
@@ -35,28 +34,36 @@ public final class ChunkHeightmap {
         return CURRENT_WORLD.get();
     }
 
-    private static long chunkKey(int chunkX, int chunkZ) {
-        return ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
-    }
-
     /**
-     * Высота в центре чанка (OCEAN_FLOOR_WG). Кэшируется.
+     * Высота в центре чанка. Кэшируется.
+     *
+     * Высота берётся из шума генератора (TerrainHeight), а НЕ через world.getTopY().
+     * world.getTopY() ходит в ChunkRegion.getChunk(), и для соседних чанков за границей региона
+     * это давало в лог "Requested chunk / Region bounds" + исключение, после чего сюда попадала
+     * заглушка DEFAULT_GROUND. Заглушка ещё и кэшировалась, поэтому результат зависел от порядка
+     * генерации: соседние чанки получали разный cityLevel и на их стыке появлялись стены/траншеи.
      */
     public static int getHeight(StructureWorldAccess world, int chunkX, int chunkZ) {
-        long key = chunkKey(chunkX, chunkZ);
+        DimChunk key = DimChunk.of(world, chunkX, chunkZ);
         Integer cached = HEIGHT_CACHE.get(key);
         if (cached != null) return cached;
 
-        int cx = (chunkX << 4) + 8;
-        int cz = (chunkZ << 4) + 8;
-        int h;
-        try {
-            h = world.getTopY(Heightmap.Type.OCEAN_FLOOR_WG, cx, cz);
-        } catch (Exception e) {
-            h = DEFAULT_GROUND;
+        int h = TerrainHeight.sampleChunkCenter(world, chunkX, chunkZ);
+        if (h == Integer.MIN_VALUE) {
+            // Генератор недоступен — отдаём fallback, но НЕ кэшируем его,
+            // иначе неверное значение залипнет на весь сеанс.
+            return groundLevelFallback();
         }
         HEIGHT_CACHE.put(key, h);
         return h;
+    }
+
+    /** Уровень земли из активного профиля; DEFAULT_GROUND только если конфиг ещё не загружен. */
+    private static int groundLevelFallback() {
+        com.lostcity.config.LostCityConfig config = LostCityMod.getConfig();
+        if (config == null) return DEFAULT_GROUND;
+        ProfileConfig profile = config.getActiveProfile();
+        return profile != null ? profile.getGroundLevel() : DEFAULT_GROUND;
     }
 
     /**
@@ -66,16 +73,17 @@ public final class ChunkHeightmap {
      * Оригинал: BuildingInfo.getCityLevel()
      */
     public static int getCityLevel(ChunkPos pos, ProfileConfig profile, StructureWorldAccess world) {
-        long key = chunkKey(pos.x, pos.z);
+        StructureWorldAccess w = world != null ? world : CURRENT_WORLD.get();
+        if (w == null) {
+            // Без мира высоту не получить. Раньше здесь кэшировался 0 — и этот 0 потом
+            // возвращался уже во время реальной генерации. Не кэшируем.
+            return 0;
+        }
+
+        DimChunk key = DimChunk.of(w, pos.x, pos.z);
         Integer cached = CITY_LEVEL_CACHE.get(key);
         if (cached != null) return cached;
 
-        StructureWorldAccess w = world != null ? world : CURRENT_WORLD.get();
-        if (w == null) {
-            CITY_LEVEL_CACHE.put(key, 0);
-            return 0;
-        }
-        
         int result;
         // Этап 2.2: Поддержка всех профилей
         if (profile.isSpace()) {
@@ -180,7 +188,8 @@ public final class ChunkHeightmap {
         if (config == null) return false;
         // Используем City.getCityFactor() для проверки (как в оригинале)
         float cityFactor = com.lostcity.worldgen.City.getCityFactor(pos, config, world);
-        float threshold = 0.2f; // CITY_THRESHOLD
+        ProfileConfig profile = config.getActiveProfile();
+        float threshold = profile != null ? profile.getCityThreshold() : 0.2f;
         return cityFactor > threshold;
     }
 

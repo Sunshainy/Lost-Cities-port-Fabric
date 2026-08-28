@@ -35,13 +35,12 @@ public class ProfileSelectionScreen extends Screen {
         // Загружаем текущее значение из конфига
         if (config != null) {
             if ("disabled".equals(config.selectedProfile)) {
-                this.selectedProfile = null; // null = "Disabled" в GUI
+                this.selectedProfile = "disabled";
             } else {
                 this.selectedProfile = config.selectedProfile;
             }
         } else {
-            // По умолчанию "Disabled"
-            this.selectedProfile = null;
+            this.selectedProfile = "default";
         }
     }
     
@@ -77,16 +76,16 @@ public class ProfileSelectionScreen extends Screen {
     }
     
     private Text getProfileButtonText() {
-        if (selectedProfile == null) {
+        if ("disabled".equals(selectedProfile)) {
             return Text.literal("Profile: Disabled (Vanilla)");
         } else {
-            return Text.literal("Profile: " + selectedProfile);
+            return Text.literal("Profile: " + (selectedProfile != null ? selectedProfile : "default"));
         }
     }
     
     private void toggleProfile() {
-        if (selectedProfile == null) {
-            // null -> первый профиль
+        if ("disabled".equals(selectedProfile) || selectedProfile == null) {
+            // "disabled" -> первый реальный профиль ("default")
             if (!availableProfiles.isEmpty()) {
                 selectedProfile = availableProfiles.get(0);
             }
@@ -94,8 +93,8 @@ public class ProfileSelectionScreen extends Screen {
             // Переключаемся на следующий профиль
             int currentIndex = availableProfiles.indexOf(selectedProfile);
             if (currentIndex == -1 || currentIndex >= availableProfiles.size() - 1) {
-                // Последний профиль -> null (Disabled)
-                selectedProfile = null;
+                // Последний профиль -> "disabled"
+                selectedProfile = "disabled";
             } else {
                 selectedProfile = availableProfiles.get(currentIndex + 1);
             }
@@ -104,7 +103,7 @@ public class ProfileSelectionScreen extends Screen {
     
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context);
+        this.renderBackgroundTexture(context);
         
         // Заголовок
         context.drawCenteredTextWithShadow(
@@ -149,15 +148,11 @@ public class ProfileSelectionScreen extends Screen {
         // Сохраняем выбранный профиль в конфиг
         LostCityConfig config = com.lostcity.LostCityMod.getConfig();
         if (config != null) {
-            if (selectedProfile == null) {
-                config.selectedProfile = "disabled";
-            } else {
-                config.selectedProfile = selectedProfile;
-            }
+            config.selectedProfile = (selectedProfile != null) ? selectedProfile : "disabled";
             // TODO: Сохранить конфиг на диск (когда будет реализована система сохранения)
         }
         
-        ProfileSelection.setSelectedProfile(selectedProfile);
+        ProfileSelection.setSelectedProfile(config != null ? config.selectedProfile : "default");
         
         // Возвращаемся к родительскому экрану
         if (this.client != null) {

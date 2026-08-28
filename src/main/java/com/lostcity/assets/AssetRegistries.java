@@ -28,6 +28,7 @@ public class AssetRegistries {
     private static final Map<String, CityStyle> CITYSTYLES = new HashMap<>();
     /** Этап 3.1: Style для получения палитр. */
     private static final Map<String, Style> STYLES = new HashMap<>();
+    private static final Map<String, List<StuffObject>> STUFF_BY_TAG = new HashMap<>();
 
     private static boolean loaded = false;
     /** Кэш уличной палитры (common+default). Сбрасывается при clear(). */
@@ -42,9 +43,20 @@ public class AssetRegistries {
         PREDEFINED_CITIES.clear();
         CITYSTYLES.clear();
         STYLES.clear();
+        STUFF_BY_TAG.clear();
         streetPaletteCache = null;
         loaded = false;
         ModLogger.info("AssetRegistries cleared");
+    }
+
+    public static void putStuff(StuffObject stuff) {
+        for (String tag : stuff.tags) {
+            STUFF_BY_TAG.computeIfAbsent(tag, k -> new ArrayList<>()).add(stuff);
+        }
+    }
+
+    public static List<StuffObject> getStuffByTag(String tag) {
+        return STUFF_BY_TAG.get(tag);
     }
 
     /** Уличная палитра (common+default). Кэшируется после загрузки ассетов. */

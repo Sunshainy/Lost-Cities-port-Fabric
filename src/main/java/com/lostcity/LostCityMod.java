@@ -24,7 +24,7 @@ public class LostCityMod implements ModInitializer {
 
     public static final String MOD_ID = "lostcities";
     public static final String MOD_NAME = "Lost City";
-    public static final String VERSION = "1.0.0-SNAPSHOT";
+    public static final String VERSION = "1.0.0";
 
     /** Логгер для всего мода */
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
@@ -54,6 +54,20 @@ public class LostCityMod implements ModInitializer {
         config = ConfigManager.load();
         config.printConfigInfo();
 
+        // Инициализируем ProfileSelection из конфига (для совместимости с GUI)
+        if (config != null && config.selectedProfile != null && !"disabled".equals(config.selectedProfile)) {
+            // Инициализируем только на клиенте (GUI доступен только на клиенте)
+            try {
+                Class<?> profileSelectionClass = Class.forName("com.lostcity.gui.ProfileSelection");
+                java.lang.reflect.Method setMethod = profileSelectionClass.getMethod("setSelectedProfile", String.class);
+                setMethod.invoke(null, config.selectedProfile);
+                ModLogger.info("ProfileSelection initialized from config: {}", config.selectedProfile);
+            } catch (Exception e) {
+                // На сервере GUI недоступен - это нормально
+                ModLogger.debug("ProfileSelection not available (server side): {}", e.getMessage());
+            }
+        }
+
         // Шаг 3 - Регистрация Features
         ModLogger.info("Registering world generation features...");
         ModFeatures.registerFeature();
@@ -63,6 +77,9 @@ public class LostCityMod implements ModInitializer {
         // Шаг 6 - Регистрация загрузчика ассетов (JSON: buildings, palettes, parts)
         ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(new AssetLoader());
         ModLogger.info("Asset loader registered (loads on resource reload / world load)");
+
+        // Шаг 7 - Регистрация игровых команд (/lostcities info, /lc info)
+        com.lostcity.commands.ModCommands.register();
 
         // Шаг 11 - Очистка кэшей при выгрузке мира (как в оригинале ForgeEventHandlers)
         ServerWorldEvents.UNLOAD.register((server, world) -> {

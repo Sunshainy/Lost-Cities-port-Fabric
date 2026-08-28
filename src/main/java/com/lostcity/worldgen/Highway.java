@@ -7,8 +7,8 @@ import com.lostcity.util.PerlinNoiseGenerator14;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.StructureWorldAccess;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Магистрали (highways). Оригинал: mcjty.lostcities.worldgen.lost.Highway.
@@ -16,45 +16,40 @@ import java.util.Map;
  */
 public final class Highway {
 
-    private static final Map<Long, Integer> X_LEVEL_CACHE = new HashMap<>();
-    private static final Map<Long, Integer> Z_LEVEL_CACHE = new HashMap<>();
+    // ConcurrentHashMap, как в оригинале: getHighwayLevel вызывается из нескольких Worker-Main
+    // потоков одновременно (особенно при пре-генерации Chunky). Обычный HashMap здесь
+    // мог отдавать мусор или зависать на resize.
+    private static final Map<DimChunk, Integer> X_LEVEL_CACHE = new ConcurrentHashMap<>();
+    private static final Map<DimChunk, Integer> Z_LEVEL_CACHE = new ConcurrentHashMap<>();
 
-    private static PerlinNoiseGenerator14 perlinX;
-    private static PerlinNoiseGenerator14 perlinZ;
-    private static long lastSeed = Long.MIN_VALUE;
-
-    private static void makePerlin(long seed) {
-        if (perlinX == null || lastSeed != seed) {
-            lastSeed = seed;
-            perlinX = new PerlinNoiseGenerator14(seed, 4);
-            perlinZ = new PerlinNoiseGenerator14(seed, 4);
-        }
+    /** Шум на измерение+сид, как HIGHWAY_NOISE в оригинале. */
+    private record Noise(PerlinNoiseGenerator14 x, PerlinNoiseGenerator14 z) {
     }
 
-    private static long key(int cx, int cz) {
-        return ((long) cx << 32) | (cz & 0xFFFFFFFFL);
+    private static final Map<Long, Noise> NOISE = new ConcurrentHashMap<>();
+
+    private static Noise getNoise(long seed) {
+        return NOISE.computeIfAbsent(seed,
+                s -> new Noise(new PerlinNoiseGenerator14(s, 4), new PerlinNoiseGenerator14(s, 4)));
     }
 
-    /** Как в оригинале: perlinX.getValue(cx/MAIN, cz/SECONDARY). makePerlin(seed) вызывается в getHighwayLevel. */
-    private static double noiseX(int chunkX, int chunkZ, ProfileConfig profile) {
+    /** Как в оригинале: perlinX.getValue(cx/MAIN, cz/SECONDARY). */
+    private static double noiseX(Noise noise, int chunkX, int chunkZ, ProfileConfig profile) {
         double sx = chunkX / profile.getHighwayMainPerlinScale();
         double sz = chunkZ / profile.getHighwaySecondaryPerlinScale();
-        return perlinX.getValue(sx, sz);
+        return noise.x().getValue(sx, sz);
     }
 
     /** Как в оригинале: perlinZ.getValue(cx/SECONDARY, cz/MAIN). */
-    private static double noiseZ(int chunkX, int chunkZ, ProfileConfig profile) {
+    private static double noiseZ(Noise noise, int chunkX, int chunkZ, ProfileConfig profile) {
         double sx = chunkX / profile.getHighwaySecondaryPerlinScale();
         double sz = chunkZ / profile.getHighwayMainPerlinScale();
-        return perlinZ.getValue(sx, sz);
+        return noise.z().getValue(sx, sz);
     }
 
-    private static boolean hasXHighway(int chunkX, int chunkZ, ProfileConfig profile) {
-        return noiseX(chunkX, chunkZ, profile) > profile.getHighwayPerlinFactor();
-    }
-
-    private static boolean hasZHighway(int chunkX, int chunkZ, ProfileConfig profile) {
-        return noiseZ(chunkX, chunkZ, profile) > profile.getHighwayPerlinFactor();
+    private static boolean hasHighway(Noise noise, int chunkX, int chunkZ, ProfileConfig profile, boolean useX) {
+        double value = useX ? noiseX(noise, chunkX, chunkZ, profile) : noiseZ(noise, chunkX, chunkZ, profile);
+        return value > profile.getHighwayPerlinFactor();
     }
 
     /**
@@ -70,9 +65,11 @@ public final class Highway {
     }
 
     private static int getHighwayLevel(ChunkPos pos, ProfileConfig profile, StructureWorldAccess world, boolean useX) {
-        Map<Long, Integer> cache = useX ? X_LEVEL_CACHE : Z_LEVEL_CACHE;
-        long k = key(pos.x, pos.z);
-        if (cache.containsKey(k)) return cache.get(k);
+        StructureWorldAccess w = world != null ? world : ChunkHeightmap.getCurrentWorld();
+        Map<DimChunk, Integer> cache = useX ? X_LEVEL_CACHE : Z_LEVEL_CACHE;
+        DimChunk k = DimChunk.of(w, pos.x, pos.z);
+        Integer cachedLevel = cache.get(k);
+        if (cachedLevel != null) return cachedLevel;
 
         int mask = profile.getHighwayDistanceMask();
         if (mask <= 0) {
@@ -88,20 +85,19 @@ public final class Highway {
 
         LostCityConfig config = LostCityMod.getConfig();
         if (config == null) {
-            cache.put(k, -1);
+            // Не кэшируем: конфиг появится позже, а -1 залипнет навсегда.
             return -1;
         }
 
-        StructureWorldAccess w = world != null ? world : ChunkHeightmap.getCurrentWorld();
         if (w == null) {
-            cache.put(k, -1);
+            // Нет мира — высоту концов магистрали не посчитать. Не кэшируем.
             return -1;
         }
         long seed = w.toServerWorld().getSeed();
-        makePerlin(seed);
+        Noise noise = getNoise(seed);
 
         // Оригинал: ищем lower/higher только если текущий чанк входит в highway (perlin > factor)
-        boolean hasCurrent = useX ? hasXHighway(pos.x, pos.z, profile) : hasZHighway(pos.x, pos.z, profile);
+        boolean hasCurrent = hasHighway(noise, pos.x, pos.z, profile, useX);
         if (!hasCurrent) {
             cache.put(k, -1);
             return -1;
@@ -111,8 +107,7 @@ public final class Highway {
         while (lower >= -10000) {
             int cx = useX ? lower : pos.x;
             int cz = useX ? pos.z : lower;
-            boolean has = useX ? hasXHighway(cx, cz, profile) : hasZHighway(cx, cz, profile);
-            if (!has) break;
+            if (!hasHighway(noise, cx, cz, profile, useX)) break;
             lower--;
         }
         lower++;
@@ -121,8 +116,7 @@ public final class Highway {
         while (higher <= 10000) {
             int cx = useX ? higher : pos.x;
             int cz = useX ? pos.z : higher;
-            boolean has = useX ? hasXHighway(cx, cz, profile) : hasZHighway(cx, cz, profile);
-            if (!has) break;
+            if (!hasHighway(noise, cx, cz, profile, useX)) break;
             higher++;
         }
         higher--;
@@ -134,17 +128,18 @@ public final class Highway {
 
         ChunkPos lowerPos = useX ? new ChunkPos(lower, pos.z) : new ChunkPos(pos.x, lower);
         ChunkPos higherPos = useX ? new ChunkPos(higher, pos.z) : new ChunkPos(pos.x, higher);
-        // Этап 1.2: Передаём world для проверки высоты (может быть null)
-        boolean cityLower = City.isCity(lowerPos, config, world);
-        boolean cityHigher = City.isCity(higherPos, config, world);
+        // Концы магистрали лежат далеко за пределами текущего региона — высота для них
+        // берётся из шума генератора (ChunkHeightmap -> TerrainHeight), а не через чанки.
+        boolean cityLower = City.isCity(lowerPos, config, w);
+        boolean cityHigher = City.isCity(higherPos, config, w);
         boolean valid = profile.getHighwayRequiresTwoCities() ? (cityLower && cityHigher) : (cityLower || cityHigher);
         if (!valid) {
             cache.put(k, -1);
             return -1;
         }
 
-        int levelLower = ChunkHeightmap.getCityLevel(lowerPos, profile, world);
-        int levelHigher = ChunkHeightmap.getCityLevel(higherPos, profile, world);
+        int levelLower = ChunkHeightmap.getCityLevel(lowerPos, profile, w);
+        int levelHigher = ChunkHeightmap.getCityLevel(higherPos, profile, w);
         int level = switch (profile.getHighwayLevelFromCitiesMode()) {
             case 0 -> levelLower;
             case 1 -> Math.min(levelLower, levelHigher);
@@ -154,7 +149,7 @@ public final class Highway {
         };
 
         for (int i = lower; i <= higher; i++) {
-            long key = useX ? key(i, pos.z) : key(pos.x, i);
+            DimChunk key = useX ? DimChunk.of(w, i, pos.z) : DimChunk.of(w, pos.x, i);
             cache.put(key, level);
         }
         return level;
@@ -163,8 +158,6 @@ public final class Highway {
     public static void cleanCache() {
         X_LEVEL_CACHE.clear();
         Z_LEVEL_CACHE.clear();
-        perlinX = null;
-        perlinZ = null;
-        lastSeed = Long.MIN_VALUE;
+        NOISE.clear();
     }
 }

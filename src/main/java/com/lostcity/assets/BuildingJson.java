@@ -25,4 +25,10 @@ public class BuildingJson {
     /** Макс. подвалов (-1 = из профиля). Оригинал: maxcellars. */
     @SerializedName("maxcellars")
     public Integer maxCellars;
+    /** Мин. этажей (-1 = из профиля). Оригинал: minfloors. */
+    @SerializedName("minfloors")
+    public Integer minFloors;
+    /** Макс. этажей (-1 = из профиля). Оригинал: maxfloors. */
+    @SerializedName("maxfloors")
+    public Integer maxFloors;
 }

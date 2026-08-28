@@ -24,40 +24,11 @@ public class Doors {
      * Создать BlockState для двери с правильными свойствами.
      * Оригинал: getDoor() в Doors.java
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private static BlockState getDoor(Block door, boolean upper, boolean left, Direction facing) {
-        BlockState state = door.getDefaultState()
+        return door.getDefaultState()
                 .with(DoorBlock.HALF, upper ? DoubleBlockHalf.UPPER : DoubleBlockHalf.LOWER)
-                .with(DoorBlock.FACING, facing);
-        
-        // Устанавливаем HINGE через рефлексию (для совместимости с разными версиями mappings)
-        // В Fabric 1.20.1 с Yarn mappings путь может быть net.minecraft.block.enums.DoorHingeSide
-        try {
-            // Пробуем Fabric/Yarn путь
-            Class<?> hingeEnum = Class.forName("net.minecraft.block.enums.DoorHingeSide");
-            Object leftValue = hingeEnum.getField("LEFT").get(null);
-            Object rightValue = hingeEnum.getField("RIGHT").get(null);
-            // Используем Property напрямую с небезопасным приведением
-            Object hingeValue = left ? leftValue : rightValue;
-            state = setPropertyValueUnsafe(state, DoorBlock.HINGE, hingeValue);
-        } catch (ClassNotFoundException e1) {
-            // Пробуем альтернативный путь (Forge-style, если используется промежуточный mappings)
-            try {
-                Class<?> hingeEnum = Class.forName("net.minecraft.world.level.block.state.properties.DoorHingeSide");
-                Object leftValue = hingeEnum.getField("LEFT").get(null);
-                Object rightValue = hingeEnum.getField("RIGHT").get(null);
-                // Используем Property напрямую с небезопасным приведением
-                Object hingeValue = left ? leftValue : rightValue;
-                state = setPropertyValueUnsafe(state, DoorBlock.HINGE, hingeValue);
-            } catch (Exception e2) {
-                // Если не получилось, двери будут работать, но без правильной петли
-                // Это не критично для функциональности - двери всё равно будут работать
-            }
-        } catch (Exception e) {
-            // Игнорируем ошибки рефлексии - двери будут работать без правильной петли
-        }
-        
-        return state;
+                .with(DoorBlock.FACING, facing)
+                .with(DoorBlock.HINGE, left ? net.minecraft.block.enums.DoorHinge.LEFT : net.minecraft.block.enums.DoorHinge.RIGHT);
     }
     
     /**

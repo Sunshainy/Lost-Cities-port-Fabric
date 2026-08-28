@@ -35,35 +35,22 @@ public enum Transform {
         };
     }
 
-    /** Локальные координаты (px, pz) части → координаты в чанке. По умолчанию 16×16. */
+    /** Локальные координаты (px, pz) части → координаты в чанке. В оригинале ВСЕГДА используется 16x16 (mx=15, mz=15). */
     public int rotateX(int x, int z) {
-        return rotateX(x, z, 16, 16);
-    }
-
-    public int rotateZ(int x, int z) {
-        return rotateZ(x, z, 16, 16);
-    }
-
-    /** С учётом размера части (sizeX × sizeZ). */
-    public int rotateX(int x, int z, int sizeX, int sizeZ) {
-        int mx = sizeX - 1;
-        int mz = sizeZ - 1;
         return switch (this) {
             case ROTATE_NONE -> x;
-            case ROTATE_90 -> mz - z;
-            case ROTATE_180 -> mx - x;
+            case ROTATE_90 -> 15 - z;
+            case ROTATE_180 -> 15 - x;
             case ROTATE_270 -> z;
         };
     }
 
-    public int rotateZ(int x, int z, int sizeX, int sizeZ) {
-        int mx = sizeX - 1;
-        int mz = sizeZ - 1;
+    public int rotateZ(int x, int z) {
         return switch (this) {
             case ROTATE_NONE -> z;
             case ROTATE_90 -> x;
-            case ROTATE_180 -> mz - z;
-            case ROTATE_270 -> mx - x;
+            case ROTATE_180 -> 15 - z;
+            case ROTATE_270 -> 15 - x;
         };
     }
 }
