@@ -15,7 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Главный класс мода Lost City для Fabric 1.20.1
+ * Главный класс мода Lost City для Fabric.
  * Портирован с Forge версии McJtyMods/LostCities
  *
  * Этот класс инициализирует серверную и общую часть мода.
@@ -24,7 +24,20 @@ public class LostCityMod implements ModInitializer {
 
     public static final String MOD_ID = "lostcities";
     public static final String MOD_NAME = "Lost City";
-    public static final String VERSION = "1.0.0";
+    /**
+     * Версия берётся из fabric.mod.json через загрузчик, а не хардкодится.
+     * Так она не может разойтись с реальной версией джарника при мультиверсионной сборке.
+     */
+    public static final String VERSION = modVersion(MOD_ID);
+    /** Версия Minecraft, на которой мод сейчас запущен. */
+    public static final String MINECRAFT_VERSION = modVersion("minecraft");
+
+    private static String modVersion(String id) {
+        return net.fabricmc.loader.api.FabricLoader.getInstance()
+                .getModContainer(id)
+                .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                .orElse("unknown");
+    }
 
     /** Логгер для всего мода */
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);

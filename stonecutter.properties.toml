@@ -1,0 +1,19 @@
+# Центральные свойства проекта. Общие значения сверху, версионные — в секциях ниже.
+# Обычный gradle.properties остаётся только под опции самого Gradle.
+
+mod.id = "lostcities"
+mod.name = "Lost City"
+mod.group = "com.lostcities"
+mod.version = "1.0.1"
+
+# Loader для компиляции. В fabric.mod.json остаётся более мягкое требование >=0.15.0.
+deps.fabric_loader = "0.18.4"
+
+["1.20.1"]
+# Диапазон совместимости, попадает в fabric.mod.json
+mod.mc_compat = ">=1.20 <=1.20.1"
+# Версии, которые помечаются совместимыми на Modrinth/CurseForge
+mod.mc_releases = ["1.20", "1.20.1"]
+
+deps.yarn_mappings = "1.20.1+build.10"
+deps.fabric_api = "0.92.7+1.20.1"

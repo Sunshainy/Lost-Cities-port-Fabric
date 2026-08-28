@@ -22,9 +22,10 @@ public final class ModLogger {
     /** Логирование старта инициализации */
     public static void logInitStart() {
         LostCityMod.LOGGER.info("================================================");
-        LostCityMod.LOGGER.info("  {} v{} - Initializing",
+        LostCityMod.LOGGER.info("  {} v{} for Minecraft {} - Initializing",
                 LostCityMod.MOD_NAME,
-                LostCityMod.VERSION);
+                LostCityMod.VERSION,
+                LostCityMod.MINECRAFT_VERSION);
         LostCityMod.LOGGER.info("  Fabric Port by sunshainy");
         LostCityMod.LOGGER.info("  Original Forge mod by McJty");
         if (DEBUG_MODE) {

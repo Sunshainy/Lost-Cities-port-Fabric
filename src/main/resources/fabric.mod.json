@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "lostcities",
+  "id": "${id}",
   "version": "${version}",
-  "name": "Lost City",
+  "name": "${name}",
   "description": "Generates abandoned cities across the world - Fabric Port by sunshainy",
   "authors": [
     "sunshainy",
@@ -31,7 +31,7 @@
 
   "depends": {
     "fabricloader": ">=0.15.0",
-    "minecraft": ">=1.20 <=1.20.4",
+    "minecraft": "${minecraft}",
     "java": ">=17",
     "fabric-api": "*"
   },
