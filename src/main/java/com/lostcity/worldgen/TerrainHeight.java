@@ -1,9 +1,11 @@
 package com.lostcity.worldgen;
 
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.world.ServerChunkManager;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.world.Heightmap;
 import net.minecraft.world.StructureWorldAccess;
+import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.ChunkManager;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.gen.noise.NoiseConfig;
@@ -64,5 +66,44 @@ public final class TerrainHeight {
     /** Высота в центре чанка — то, что оригинал берёт как высоту чанка (cx + 8, cz + 8). */
     public static int sampleChunkCenter(StructureWorldAccess world, int chunkX, int chunkZ) {
         return sample(world, (chunkX << 4) + 8, (chunkZ << 4) + 8);
+    }
+
+    /**
+     * Биом в блоковых координатах, из BiomeSource генератора, без обращения к чанкам.
+     *
+     * Ровно то же, что делает оригинал в DefaultDimensionInfo.getBiome():
+     * generator.getBiomeSource().getNoiseBiome(x >> 2, y >> 2, z >> 2, sampler).
+     *
+     * world.getBiome() здесь не подходит по той же причине, что и world.getTopY():
+     * он идёт в ChunkRegion.getChunk(), и для соседнего чанка за границей региона
+     * на 1.20.6+ это уже не предупреждение, а IllegalStateException
+     * "Requested chunk unavailable during world generation", который валит генерацию чанка.
+     *
+     * @return биом, либо null если генератор недоступен (вызывающий подставляет своё поведение)
+     */
+    public static RegistryEntry<Biome> sampleBiome(StructureWorldAccess world, int blockX, int blockY, int blockZ) {
+        if (world == null) {
+            return null;
+        }
+        try {
+            ServerWorld serverWorld = world.toServerWorld();
+            if (serverWorld == null) {
+                return null;
+            }
+            ChunkManager chunkManager = serverWorld.getChunkManager();
+            if (!(chunkManager instanceof ServerChunkManager serverChunkManager)) {
+                return null;
+            }
+            ChunkGenerator generator = serverChunkManager.getChunkGenerator();
+            NoiseConfig noiseConfig = serverChunkManager.getNoiseConfig();
+            if (generator == null || noiseConfig == null) {
+                return null;
+            }
+            // getBiome здесь — это getNoiseBiome оригинала: координаты в биомных единицах (блок >> 2).
+            return generator.getBiomeSource().getBiome(
+                    blockX >> 2, blockY >> 2, blockZ >> 2, noiseConfig.getMultiNoiseSampler());
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

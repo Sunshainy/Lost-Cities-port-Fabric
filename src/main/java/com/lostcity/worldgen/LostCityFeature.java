@@ -1086,6 +1086,13 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                                         var be = driver.world.getBlockEntity(pos);
                                         if (be instanceof LootableContainerBlockEntity lootable) {
                                             long seed = (long) info.chunkPos.x * 341873128712L + info.chunkPos.z * 132897987541L + pos.getX() * 31L + pos.getZ() * 17L + pos.getY();
+                                            // В 1.20.5 таблицы лута переехали в реестр:
+                                            // setLootTable(Identifier, long) -> setLootTable(RegistryKey) + setLootTableSeed(long)
+                                            //? if >=1.20.5 {
+                                            /*lootable.setLootTable(net.minecraft.registry.RegistryKey.of(
+                                                    net.minecraft.registry.RegistryKeys.LOOT_TABLE, lootId));
+                                            lootable.setLootTableSeed(seed);
+                                            *///?} else
                                             lootable.setLootTable(lootId, seed);
                                         }
                                     });
@@ -1104,13 +1111,17 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                                     var be = driver.world.getBlockEntity(pos);
                                     if (be instanceof net.minecraft.block.entity.MobSpawnerBlockEntity spawner) {
                                         String mobString = finalMobId.contains(":") ? finalMobId : "minecraft:" + finalMobId;
-                                        net.minecraft.nbt.NbtCompound nbt = spawner.createNbt();
-                                        net.minecraft.nbt.NbtCompound spawnData = new net.minecraft.nbt.NbtCompound();
-                                        net.minecraft.nbt.NbtCompound entity = new net.minecraft.nbt.NbtCompound();
-                                        entity.putString("id", mobString);
-                                        spawnData.put("entity", entity);
-                                        nbt.put("SpawnData", spawnData);
-                                        spawner.readNbt(nbt);
+                                        // Раньше моб задавался ручной сборкой NBT и spawner.readNbt().
+                                        // В 1.20.5 readNbt/createNbt стали принимать WrapperLookup и ушли
+                                        // в protected. setEntityType — публичный API с одинаковой
+                                        // подписью во всех поддерживаемых версиях.
+                                        Identifier mobIdent = Identifier.tryParse(mobString);
+                                        net.minecraft.entity.EntityType<?> type = mobIdent == null ? null
+                                                : net.minecraft.registry.Registries.ENTITY_TYPE.get(mobIdent);
+                                        if (type != null) {
+                                            spawner.setEntityType(type,
+                                                    net.minecraft.util.math.random.Random.create(pos.asLong()));
+                                        }
                                     }
                                 });
                             } else if (isSpawnerBlock) {

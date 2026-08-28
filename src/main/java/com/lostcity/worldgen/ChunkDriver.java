@@ -139,10 +139,11 @@ public class ChunkDriver {
                     continue;
                 }
                 
-                // Обновляем форму соседнего блока на основе размещённого
-                // Используем updateShape (аналог getStateForNeighborUpdate в Fabric)
-                BlockState updatedNeighbor = neighborState.getBlock().getStateForNeighborUpdate(
-                    neighborState,
+                // Обновляем форму соседнего блока на основе размещённого.
+                // Вызываем через BlockState, а не через Block: в 1.20.5 метод на
+                // AbstractBlock стал protected, а публичный делегат на состоянии
+                // существует во всех поддерживаемых версиях.
+                BlockState updatedNeighbor = neighborState.getStateForNeighborUpdate(
                     direction,
                     placedState,
                     world,

@@ -1435,10 +1435,13 @@ public class BuildingInfo {
     private static boolean isWaterBiome(BuildingInfo info) {
         StructureWorldAccess w = ChunkHeightmap.getCurrentWorld();
         if (w == null) return false;
-        // Берём биом в центре чанка
+        // Биом в центре чанка. Берём из шума генератора, а не через w.getBiome():
+        // последний ходит в ChunkRegion.getChunk() и для соседних чанков за границей
+        // региона на 1.20.6+ роняет генерацию с "Requested chunk unavailable".
         int cx = (info.chunkPos.x << 4) + 8;
         int cz = (info.chunkPos.z << 4) + 8;
-        var biome = w.getBiome(new BlockPos(cx, 64, cz));
+        var biome = TerrainHeight.sampleBiome(w, cx, 64, cz);
+        if (biome == null) return false;
         return biome.isIn(net.minecraft.registry.tag.BiomeTags.IS_OCEAN)
             || biome.isIn(net.minecraft.registry.tag.BiomeTags.IS_DEEP_OCEAN)
             || biome.isIn(net.minecraft.registry.tag.BiomeTags.IS_RIVER)

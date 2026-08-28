@@ -103,8 +103,13 @@ public class ProfileSelectionScreen extends Screen {
     
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        // С 1.20.2 фон рисует сам Screen.render, до этого его надо рисовать руками.
+        //? if <1.20.2 {
         this.renderBackgroundTexture(context);
-        
+        //?}
+
+        super.render(context, mouseX, mouseY, delta);
+
         // Заголовок
         context.drawCenteredTextWithShadow(
             this.textRenderer,
@@ -113,7 +118,7 @@ public class ProfileSelectionScreen extends Screen {
             20,
             0xFFFFFF
         );
-        
+
         // Описание текущего профиля
         String description = getProfileDescription();
         context.drawTextWithShadow(
@@ -123,8 +128,6 @@ public class ProfileSelectionScreen extends Screen {
             this.height / 4 + 30,
             0xAAAAAA
         );
-        
-        super.render(context, mouseX, mouseY, delta);
     }
     
     private String getProfileDescription() {
