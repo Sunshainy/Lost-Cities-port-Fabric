@@ -9,7 +9,16 @@ public class ProfileConfig {
     // === ОСНОВНЫЕ ПАРАМЕТРЫ ===
     
     public String profileName = "default";
-    public float cityChance = 0.05f;
+    /**
+     * Шанс, что чанк — ЦЕНТР города. Оригинал: CITY_CHANCE = .01.
+     * ВНИМАНИЕ: зависимость от этого числа резко нелинейная. Вклады всех центров в радиусе
+     * CITY_MAXRADIUS складываются, а радиус одного города 50–128 блоков (3–8 чанков),
+     * так что один центр «красит» ~50–200 чанков. Замеры доли городских чанков
+     * (cityThreshold = 0.2, радиус 50–128):
+     *   0.005 -> 29%   0.01 -> 50%   0.02 -> 75%   0.03 -> 88%   0.05 -> 97%
+     * При 0.05 ванильного рельефа между городами практически не остаётся.
+     */
+    public float cityChance = 0.01f;
     public int groundLevel = 71;
     public int seaLevel = -1;
 
@@ -44,6 +53,11 @@ public class ProfileConfig {
     public int citySpawnDistance2 = 0;
     public float citySpawnMultiplier1 = 1.0f;
     public float citySpawnMultiplier2 = 1.0f;
+    /**
+     * Порог cityFactor, выше которого чанк считается городским. Оригинал: CITY_THRESHOLD = .2f.
+     * Второй (и более мягкий, чем cityChance) рычаг «сколько ванильного мира остаётся»:
+     * при cityChance = 0.01 порог 0.2 даёт 50% городских чанков, 0.4 -> ~28%, 0.7 -> ~18%.
+     */
     public float cityThreshold = 0.2f;
     public double cityPerlinScale = 100.0;
     public double cityPerlinOffset = 0.0;

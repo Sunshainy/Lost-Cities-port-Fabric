@@ -33,15 +33,24 @@ public class City {
     private static final Map<String, CityRarityMap> CITY_RARITY_MAP = new java.util.concurrent.ConcurrentHashMap<>();
     
     /** Этап 1.3: Кэш для predefined buildings/streets по ChunkPos. */
-    private static Map<ChunkPos, PredefinedBuilding> predefinedBuildingMap = null;
-    private static Map<ChunkPos, PredefinedStreet> predefinedStreetMap = null;
-    private static Map<ChunkPos, PredefinedCity> predefinedCityMap = null;
+    private static final Object PREDEFINED_LOCK = new Object();
+    private static volatile Map<ChunkPos, PredefinedBuilding> predefinedBuildingMap = null;
+    private static volatile Map<ChunkPos, PredefinedStreet> predefinedStreetMap = null;
+    private static volatile Map<ChunkPos, PredefinedCity> predefinedCityMap = null;
     
     /** Этап 3.1: Кэш CityStyle по ChunkPos. Оригинал: CITY_STYLE_CACHE. */
     private static final TimedCache<Long, com.lostcity.assets.CityStyle> CITY_STYLE_CACHE = new TimedCache<>(
         () -> LostCityMod.getConfig() != null ? LostCityMod.getConfig().getCacheCleanupSeconds() : 300);
 
+    /** Fallback, если профиль недоступен. Реальный порог берётся из profile.getCityThreshold(). */
     private static final float CITY_THRESHOLD = 0.2f;
+
+    /** Порог из профиля. Оригинал: profile.CITY_THRESHOLD (настраиваемый). */
+    private static float cityThreshold(LostCityConfig config) {
+        if (config == null) return CITY_THRESHOLD;
+        ProfileConfig profile = config.getActiveProfile();
+        return profile != null ? profile.getCityThreshold() : CITY_THRESHOLD;
+    }
     
     /**
      * Проверить, является ли чанк городским
@@ -51,7 +60,7 @@ public class City {
      * @return true если чанк городской
      */
     public static boolean isCity(ChunkPos pos, LostCityConfig config) {
-        return getCityFactor(pos, config) > CITY_THRESHOLD;
+        return getCityFactor(pos, config) > cityThreshold(config);
     }
     
     /**
@@ -63,7 +72,7 @@ public class City {
      * @return true если чанк городской
      */
     public static boolean isCity(ChunkPos pos, LostCityConfig config, StructureWorldAccess world) {
-        return getCityFactor(pos, config, world) > CITY_THRESHOLD;
+        return getCityFactor(pos, config, world) > cityThreshold(config);
     }
     
     /**
@@ -505,51 +514,63 @@ public class City {
      * Оригинал: calculateMap() в City.java
      */
     private static void calculatePredefinedMaps(StructureWorldAccess world) {
-        if (predefinedBuildingMap != null && predefinedStreetMap != null) {
+        if (predefinedBuildingMap != null && predefinedStreetMap != null && predefinedCityMap != null) {
             return; // Уже вычислено
         }
-        
+
         if (world == null) {
-            predefinedBuildingMap = new HashMap<>();
-            predefinedStreetMap = new HashMap<>();
-            predefinedCityMap = new HashMap<>();
+            // НЕ публикуем пустые карты: раньше первый вызов без мира навсегда фиксировал
+            // пустые predefined-города для всего сеанса.
             return;
         }
-        
-        String dimension = world.toServerWorld().getRegistryKey().getValue().toString();
-        
-        predefinedBuildingMap = new HashMap<>();
-        predefinedStreetMap = new HashMap<>();
-        predefinedCityMap = new HashMap<>();
-        
-        // Загружаем все PredefinedCity и строим карты
-        for (PredefinedCity city : AssetRegistries.getAllPredefinedCities()) {
-            // Проверяем dimension
-            if (!dimension.equals(city.dimension)) {
-                continue;
+
+        // Собираем в локальные карты и публикуем целиком под блокировкой.
+        // Иначе другой Worker-Main поток видел не-null, но ещё не заполненную карту
+        // и получал разные predefined-города для соседних чанков.
+        synchronized (PREDEFINED_LOCK) {
+            if (predefinedBuildingMap != null && predefinedStreetMap != null && predefinedCityMap != null) {
+                return;
             }
-            
-            // Добавляем city в карту по центру
-            ChunkPos cityCenter = new ChunkPos(city.chunkX, city.chunkZ);
-            predefinedCityMap.put(cityCenter, city);
-            
-            // Добавляем все buildings
-            for (PredefinedBuilding building : city.getPredefinedBuildings()) {
-                ChunkPos buildingPos = new ChunkPos(
-                    city.chunkX + building.relChunkX,
-                    city.chunkZ + building.relChunkZ
-                );
-                predefinedBuildingMap.put(buildingPos, building);
+
+            String dimension = world.toServerWorld().getRegistryKey().getValue().toString();
+
+            Map<ChunkPos, PredefinedBuilding> buildings = new HashMap<>();
+            Map<ChunkPos, PredefinedStreet> streets = new HashMap<>();
+            Map<ChunkPos, PredefinedCity> cities = new HashMap<>();
+
+            // Загружаем все PredefinedCity и строим карты
+            for (PredefinedCity city : AssetRegistries.getAllPredefinedCities()) {
+                // Проверяем dimension
+                if (!dimension.equals(city.dimension)) {
+                    continue;
+                }
+
+                // Добавляем city в карту по центру
+                ChunkPos cityCenter = new ChunkPos(city.chunkX, city.chunkZ);
+                cities.put(cityCenter, city);
+
+                // Добавляем все buildings
+                for (PredefinedBuilding building : city.getPredefinedBuildings()) {
+                    ChunkPos buildingPos = new ChunkPos(
+                        city.chunkX + building.relChunkX,
+                        city.chunkZ + building.relChunkZ
+                    );
+                    buildings.put(buildingPos, building);
+                }
+
+                // Добавляем все streets
+                for (PredefinedStreet street : city.getPredefinedStreets()) {
+                    ChunkPos streetPos = new ChunkPos(
+                        city.chunkX + street.relChunkX,
+                        city.chunkZ + street.relChunkZ
+                    );
+                    streets.put(streetPos, street);
+                }
             }
-            
-            // Добавляем все streets
-            for (PredefinedStreet street : city.getPredefinedStreets()) {
-                ChunkPos streetPos = new ChunkPos(
-                    city.chunkX + street.relChunkX,
-                    city.chunkZ + street.relChunkZ
-                );
-                predefinedStreetMap.put(streetPos, street);
-            }
+
+            predefinedBuildingMap = buildings;
+            predefinedStreetMap = streets;
+            predefinedCityMap = cities;
         }
     }
     

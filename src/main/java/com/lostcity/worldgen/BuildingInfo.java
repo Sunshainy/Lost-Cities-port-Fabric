@@ -128,7 +128,8 @@ public class BuildingInfo {
 
     /** Город без кеша. Оригинал: isCityRaw. */
     public static boolean isCityRaw(ChunkPos coord, LostCityConfig config, ProfileConfig profile, StructureWorldAccess world) {
-        return City.getCityFactor(coord, config, world) > 0.2f;
+        float threshold = profile != null ? profile.getCityThreshold() : 0.2f;
+        return City.getCityFactor(coord, config, world) > threshold;
     }
 
     /** Есть магистраль в чанке. Оригинал: hasHighway. */
