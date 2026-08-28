@@ -2,10 +2,6 @@ plugins {
     id("net.fabricmc.fabric-loom-remap")
 }
 
-// group НЕ выставляем — Stonecutter/Loom управляют этим сами.
-version = "${property("mod.version")}+${sc.current.version}"
-base.archivesName = property("mod.id") as String
-
 val requiredJava: JavaVersion = when {
     sc.current.parsed >= "1.20.5" -> JavaVersion.VERSION_21
     else -> JavaVersion.VERSION_17
@@ -13,6 +9,27 @@ val requiredJava: JavaVersion = when {
 
 /** Свойство из stonecutter.properties.toml — с учётом секции активной версии. */
 fun scProp(key: String): String = sc.properties[key]
+
+/** Версии Minecraft, которые покрывает этот джарник. */
+val compatibleVersions: List<String> = sc.properties.rawOrNull("mod", "mc_releases")
+    ?.asList().orEmpty().map { it.toString() }
+
+/**
+ * Диапазон для имени файла: "1.20-1.20.1" вместо "1.20.1".
+ * Так по названию джарника сразу видно, на какие версии он встанет, и не надо
+ * сверяться с описанием на странице мода.
+ */
+val versionRange: String = when {
+    compatibleVersions.isEmpty() -> sc.current.version
+    compatibleVersions.size == 1 -> compatibleVersions.first()
+    else -> "${compatibleVersions.first()}-${compatibleVersions.last()}"
+}
+
+// group НЕ выставляем — Stonecutter/Loom управляют этим сами.
+// Версия мода в fabric.mod.json берётся отдельно из mod.version и остаётся чистой,
+// здесь диапазон нужен только для имени файла.
+version = "${property("mod.version")}+$versionRange"
+base.archivesName = property("mod.id") as String
 
 repositories {
     maven("https://maven.shedaniel.me/")
