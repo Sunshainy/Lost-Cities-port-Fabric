@@ -54,6 +54,9 @@ tasks {
             "name" to scProp("mod.name"),
             "version" to scProp("mod.version"),
             "minecraft" to scProp("mod.mc_compat"),
+            // Джарник компилируется под Java этой версии MC, значит и требовать
+            // надо её же: с 1.20.5 это 21, до неё 17.
+            "java" to ">=${requiredJava.majorVersion}",
         )
         props.forEach { (k, v) -> inputs.property(k, v) }
 

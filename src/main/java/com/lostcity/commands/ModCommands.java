@@ -29,8 +29,9 @@ public class ModCommands {
                                          CommandRegistryAccess registryAccess,
                                          CommandManager.RegistrationEnvironment environment) {
         dispatcher.register(
+            // .requires не указываем: команды информационные и по умолчанию доступны всем.
+            // hasPermissionLevel(0) был бы no-op, а в 1.21.9 этого метода уже нет.
             CommandManager.literal("lostcities")
-                .requires(source -> source.hasPermissionLevel(0)) // Доступно всем игрокам
                 .then(CommandManager.literal("info")
                     .executes(ModCommands::executeInfo))
                 .then(CommandManager.literal("chunk")
@@ -40,7 +41,6 @@ public class ModCommands {
         // Алиас /lc info
         dispatcher.register(
             CommandManager.literal("lc")
-                .requires(source -> source.hasPermissionLevel(0))
                 .then(CommandManager.literal("info")
                     .executes(ModCommands::executeInfo))
         );

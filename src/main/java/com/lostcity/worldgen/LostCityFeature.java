@@ -1495,14 +1495,14 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
             net.minecraft.block.enums.WallShape e = canAttachWall(eastState);
             net.minecraft.block.enums.WallShape n = canAttachWall(northState);
             net.minecraft.block.enums.WallShape s = canAttachWall(southState);
-            state = state.with(net.minecraft.block.WallBlock.WEST_SHAPE, w)
-                         .with(net.minecraft.block.WallBlock.EAST_SHAPE, e)
-                         .with(net.minecraft.block.WallBlock.NORTH_SHAPE, n)
-                         .with(net.minecraft.block.WallBlock.SOUTH_SHAPE, s);
+            state = state.with(net.minecraft.state.property.Properties.WEST_WALL_SHAPE, w)
+                         .with(net.minecraft.state.property.Properties.EAST_WALL_SHAPE, e)
+                         .with(net.minecraft.state.property.Properties.NORTH_WALL_SHAPE, n)
+                         .with(net.minecraft.state.property.Properties.SOUTH_WALL_SHAPE, s);
             
             // Двусторонняя связь для WallBlock: обновляем ранее поставленных соседей
-            updateNeighborWall(driver, localX - 1, y, localZ, net.minecraft.block.WallBlock.EAST_SHAPE, canAttachWall(state));
-            updateNeighborWall(driver, localX, y, localZ - 1, net.minecraft.block.WallBlock.SOUTH_SHAPE, canAttachWall(state));
+            updateNeighborWall(driver, localX - 1, y, localZ, net.minecraft.state.property.Properties.EAST_WALL_SHAPE, canAttachWall(state));
+            updateNeighborWall(driver, localX, y, localZ - 1, net.minecraft.state.property.Properties.SOUTH_WALL_SHAPE, canAttachWall(state));
         }
         // Обрабатываем StairBlock — форма по соседям (оригинал: ChunkDriver.getShapeProperty)
         else if (state.getBlock() instanceof net.minecraft.block.StairsBlock) {
