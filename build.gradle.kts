@@ -72,6 +72,20 @@ tasks {
         }
     }
 
+    // У клиентского source set своих ресурсов нет, поэтому processClientResources
+    // уходит в NO-SOURCE, каталог вывода не создаётся, и Fabric Loader в dev-запуске
+    // пишет "Class path entries reference missing files ... the game may not load
+    // properly!". На собранный джарник это не влияет, но такой warning в каждом логе
+    // мешает замечать настоящие, поэтому каталог создаём сами.
+    val ensureClientResourcesDir = register("ensureClientResourcesDir") {
+        val dir = named<ProcessResources>("processClientResources").get().destinationDir
+        // outputs.dir здесь объявлять нельзя: тогда Gradle считает эту задачу
+        // производителем каталога, который читают jar и remapJar, и требует
+        // явную зависимость от них. Задача дешёвая, пусть просто выполняется всегда.
+        doLast { dir.mkdirs() }
+    }
+    named("clientClasses") { dependsOn(ensureClientResourcesDir) }
+
     jar {
         from(rootProject.file("LICENSE")) {
             rename { "${it}_${base.archivesName.get()}" }

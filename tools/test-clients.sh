@@ -36,13 +36,15 @@ echo "Cities на экране создания мира. Потом закро�
 echo
 
 # Что ищем в логах. Первая колонка — метка для сводки, дальше grep-шаблон.
+# Realms-строку исключаем: на offline-аккаунте она вылезает всегда, уровень INFO,
+# к моду отношения не имеет. Без этого исключения счётчик падений врал.
 declare -a CHECKS=(
     "миксины|Mixin apply for mod lostcities failed"
     "выход за границы|Requested chunk"
-    "ошибки|^.*/ERROR\]"
-    "падения|Exception|CrashException"
+    "ошибки|/ERROR\]"
+    "падения|^(java|net\.minecraft\.util\.crash|org\.spongepowered)\.[A-Za-z.]*(Exception|Error)"
     "лут не найден|Missing loot table|Couldn't find loot table"
-    "кнопка Cities|Cities"
+    "клиент поднялся|\[CLIENT\] Initializing client-side components"
 )
 
 for version in "${VERSIONS[@]}"; do
