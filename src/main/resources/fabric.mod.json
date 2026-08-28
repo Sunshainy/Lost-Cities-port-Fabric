@@ -25,10 +25,6 @@
     ]
   },
 
-  "mixins": [
-    "lostcity.mixins.json"
-  ],
-
   "depends": {
     "fabricloader": ">=0.15.0",
     "minecraft": "${minecraft}",

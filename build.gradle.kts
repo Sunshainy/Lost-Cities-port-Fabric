@@ -61,7 +61,6 @@ tasks {
         props.forEach { (k, v) -> inputs.property(k, v) }
 
         filesMatching("fabric.mod.json") { expand(props) }
-        filesMatching("*.mixins.json") { expand("java" to "JAVA_${requiredJava.majorVersion}") }
 
         // В 1.21 каталоги датапаков переименованы в единственное число
         // (data/<ns>/loot_tables -> loot_table и т.д.). Держим исходники в одном
