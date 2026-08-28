@@ -26,7 +26,7 @@ public class ModFeatures {
     // Ключ для PlacedFeature
     public static final RegistryKey<PlacedFeature> LOST_CITY_PLACED_KEY = 
         RegistryKey.of(RegistryKeys.PLACED_FEATURE, 
-            new Identifier(LostCityMod.MOD_ID, "city_generator"));
+            Identifier.of(LostCityMod.MOD_ID, "city_generator"));
     
     /**
      * Регистрация Feature
@@ -38,7 +38,7 @@ public class ModFeatures {
         // Создаём и регистрируем Feature
         LOST_CITY_FEATURE = Registry.register(
             Registries.FEATURE,
-            new Identifier(LostCityMod.MOD_ID, "city_generator"),
+            Identifier.of(LostCityMod.MOD_ID, "city_generator"),
             new LostCityFeature(DefaultFeatureConfig.CODEC)
         );
         

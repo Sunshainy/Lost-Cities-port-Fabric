@@ -59,6 +59,15 @@ tasks {
 
         filesMatching("fabric.mod.json") { expand(props) }
         filesMatching("*.mixins.json") { expand("java" to "JAVA_${requiredJava.majorVersion}") }
+
+        // В 1.21 каталоги датапаков переименованы в единственное число
+        // (data/<ns>/loot_tables -> loot_table и т.д.). Держим исходники в одном
+        // виде и переименовываем при сборке, чтобы не дублировать JSON по версиям.
+        if (sc.current.parsed >= "1.21") {
+            filesMatching("data/*/loot_tables/**") {
+                path = path.replace("/loot_tables/", "/loot_table/")
+            }
+        }
     }
 
     jar {
@@ -76,3 +85,4 @@ tasks {
         into(rootProject.layout.buildDirectory.dir("libs/${scProp("mod.version")}"))
     }
 }
+

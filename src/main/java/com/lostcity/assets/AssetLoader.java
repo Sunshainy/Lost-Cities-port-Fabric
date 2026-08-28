@@ -27,7 +27,7 @@ public class AssetLoader implements SimpleSynchronousResourceReloadListener {
 
     @Override
     public Identifier getFabricId() {
-        return new Identifier(LostCityMod.MOD_ID, "assets");
+        return Identifier.of(LostCityMod.MOD_ID, "assets");
     }
 
     @Override

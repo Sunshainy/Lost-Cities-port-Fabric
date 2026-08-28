@@ -1079,8 +1079,8 @@ public class LostCityFeature extends Feature<DefaultFeatureConfig> {
                             if (correctedState.getBlock() == Blocks.CHEST || correctedState.getBlock() == Blocks.TRAPPED_CHEST || correctedState.getBlock() == Blocks.BARREL) {
                                 BlockPos pos = driver.getBlockPos(lx, y, lz);
                                 Identifier lootId = "chestloot".equals(lootCond)
-                                    ? new Identifier(LostCityMod.MOD_ID, "chests/lostcitychest")
-                                    : lootCond.contains(":") ? Identifier.tryParse(lootCond) : new Identifier(LostCityMod.MOD_ID, lootCond);
+                                    ? Identifier.of(LostCityMod.MOD_ID, "chests/lostcitychest")
+                                    : lootCond.contains(":") ? Identifier.tryParse(lootCond) : Identifier.of(LostCityMod.MOD_ID, lootCond);
                                 if (lootId != null) {
                                     info.addPostTodo(() -> {
                                         var be = driver.world.getBlockEntity(pos);
