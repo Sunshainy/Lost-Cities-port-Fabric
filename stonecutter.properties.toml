@@ -4,12 +4,14 @@
 mod.id = "lostcities"
 mod.name = "Lost City"
 mod.group = "com.lostcities"
-mod.version = "1.0.1"
+mod.version = "1.1.0"
 
 # Loader для компиляции. В fabric.mod.json остаётся более мягкое требование >=0.15.0.
 deps.fabric_loader = "0.18.4"
 
 ["1.20.1"]
+# Канал на Modrinth/CurseForge
+mod.release_channel = "release"
 # Диапазон совместимости, попадает в fabric.mod.json
 mod.mc_compat = ">=1.20 <=1.20.1"
 # Версии, которые помечаются совместимыми на Modrinth/CurseForge
@@ -19,6 +21,8 @@ deps.yarn_mappings = "1.20.1+build.10"
 deps.fabric_api = "0.92.7+1.20.1"
 
 ["1.20.4"]
+# Канал на Modrinth/CurseForge
+mod.release_channel = "release"
 mod.mc_compat = ">=1.20.2 <=1.20.4"
 mod.mc_releases = ["1.20.2", "1.20.3", "1.20.4"]
 
@@ -26,6 +30,8 @@ deps.yarn_mappings = "1.20.4+build.3"
 deps.fabric_api = "0.97.3+1.20.4"
 
 ["1.20.6"]
+# Канал на Modrinth/CurseForge
+mod.release_channel = "beta"
 mod.mc_compat = ">=1.20.5 <=1.20.6"
 mod.mc_releases = ["1.20.5", "1.20.6"]
 
@@ -33,6 +39,8 @@ deps.yarn_mappings = "1.20.6+build.3"
 deps.fabric_api = "0.100.8+1.20.6"
 
 ["1.21.1"]
+# Канал на Modrinth/CurseForge
+mod.release_channel = "beta"
 mod.mc_compat = ">=1.21 <=1.21.1"
 mod.mc_releases = ["1.21", "1.21.1"]
 
@@ -40,6 +48,8 @@ deps.yarn_mappings = "1.21.1+build.3"
 deps.fabric_api = "0.116.15+1.21.1"
 
 ["1.21.4"]
+# Канал на Modrinth/CurseForge
+mod.release_channel = "beta"
 mod.mc_compat = ">=1.21.2 <=1.21.4"
 mod.mc_releases = ["1.21.2", "1.21.3", "1.21.4"]
 
@@ -47,6 +57,8 @@ deps.yarn_mappings = "1.21.4+build.8"
 deps.fabric_api = "0.119.4+1.21.4"
 
 ["1.21.8"]
+# Канал на Modrinth/CurseForge
+mod.release_channel = "beta"
 mod.mc_compat = ">=1.21.5 <=1.21.8"
 mod.mc_releases = ["1.21.5", "1.21.6", "1.21.7", "1.21.8"]
 
@@ -54,6 +66,8 @@ deps.yarn_mappings = "1.21.8+build.1"
 deps.fabric_api = "0.136.1+1.21.8"
 
 ["1.21.11"]
+# Канал на Modrinth/CurseForge
+mod.release_channel = "beta"
 mod.mc_compat = ">=1.21.9 <=1.21.11"
 mod.mc_releases = ["1.21.9", "1.21.10", "1.21.11"]
 
