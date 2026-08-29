@@ -46,6 +46,16 @@ val vanillaRenames: List<Pair<Regex, String>> = buildList {
         // NBT: аксессоры со значением по умолчанию появились в 1.21.5.
         add(Regex("\\.getStringOr\\((\"[^\"]*\"), \"\"\\)") to ".getString($1)")
     }
+    // Переименования из 1.21.
+    if (sc.current.parsed < "1.21") {
+        // ResourceLocation: фабричные методы появились в 1.21, до них — конструктор.
+        // Оба варианта бросают исключение на неверном идентификаторе, семантика та же.
+        // tryParse под правило не попадает: в нём другое имя метода.
+        add(Regex("\\bResourceLocation\\.fromNamespaceAndPath\\(") to "new ResourceLocation(")
+        add(Regex("\\bResourceLocation\\.parse\\(") to "new ResourceLocation(")
+        // ChunkAccess.getStatus() -> getPersistedStatus() в 1.21.
+        add(Regex("\\.getPersistedStatus\\(\\)") to ".getStatus()")
+    }
     // Переименования из 1.21.2.
     if (sc.current.parsed < "1.21.2") {
         // RegistryAccess: lookupOrThrow/lookup -> registryOrThrow/registry.
