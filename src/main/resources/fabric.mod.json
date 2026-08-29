@@ -12,7 +12,7 @@
     "sources": "https://github.com/Sunshainy/Lost-Cities-port-Fabric"
   },
   "license": "MIT",
-  "icon": "assets/lostcity/icon.png",
+  "icon": "assets/lostcities/icon.png",
 
   "environment": "*",
 
