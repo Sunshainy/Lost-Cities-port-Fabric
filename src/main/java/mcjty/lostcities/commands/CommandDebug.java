@@ -25,7 +25,6 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.permissions.PermissionCheck;
 import net.minecraft.world.level.WorldGenLevel;
 
 public class CommandDebug implements Command<CommandSourceStack> {

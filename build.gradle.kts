@@ -10,6 +10,55 @@ val requiredJava: JavaVersion = when {
 /** Свойство из stonecutter.properties.toml — с учётом секции активной версии. */
 fun scProp(key: String): String = sc.properties[key]
 
+/*
+ * Массовые переименования ванильных классов между версиями.
+ *
+ * Исходники хранятся в диалекте верхней версии диапазона (1.21.11) — это диалект ветки
+ * апстрима, с которой мы забираем коммиты через cherry-pick. Для более старых версий
+ * имена переписываются после препроцессинга Stonecutter, в build/generated/stonecutter/.
+ * Рабочее дерево при этом не меняется, поэтому в git не попадает ничего версионного.
+ *
+ * Условие Stonecutter на каждое обращение тут не годится: одно только
+ * ResourceLocation -> Identifier из 1.21.9 задело бы ~460 строк.
+ *
+ * Механизм `replacements` самого Stonecutter не подошёл: правила регистрируются,
+ * но к сгенерированным исходникам не применяются (0.9.7).
+ */
+val vanillaRenames: List<Pair<Regex, String>> = buildList {
+    // Переименования из 1.21.9. Все три — чистые переименования, семантика та же.
+    if (sc.current.parsed < "1.21.9") {
+        // ResourceLocation -> Identifier
+        add(Regex("\\bIdentifierArgument\\b") to "ResourceLocationArgument")
+        add(Regex("\\bIdentifier\\b") to "ResourceLocation")
+        // ResourceKey#location() -> identifier()
+        add(Regex("\\bidentifier\\(\\)") to "location()")
+        add(Regex("ResourceKey::identifier\\b") to "ResourceKey::location")
+        // NoiseRouter#initialDensityWithoutJaggedness() -> preliminarySurfaceLevel()
+        add(Regex("\\bpreliminarySurfaceLevel\\(\\)") to "initialDensityWithoutJaggedness()")
+    }
+}
+
+if (vanillaRenames.isNotEmpty()) {
+    tasks.named("stonecutterGenerate") {
+        doLast {
+            val root = layout.buildDirectory.dir("generated/stonecutter").get().asFile
+            var touched = 0
+            root.walkTopDown().filter { it.isFile && it.extension == "java" }.forEach { file ->
+                val before = file.readText()
+                var after = before
+                for ((pattern, replacement) in vanillaRenames) {
+                    after = pattern.replace(after, replacement)
+                }
+                if (after != before) {
+                    file.writeText(after)
+                    touched++
+                }
+            }
+            logger.lifecycle("Переименования под ${sc.current.version}: затронуто файлов — $touched")
+        }
+    }
+}
+
 /** Версии Minecraft, которые покрывает этот джарник. */
 val compatibleVersions: List<String> = sc.properties.rawOrNull("mod", "mc_releases")
     ?.asList().orEmpty().map { it.toString() }

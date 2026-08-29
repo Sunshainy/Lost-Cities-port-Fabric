@@ -46,6 +46,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -72,22 +73,41 @@ public class ForgeEventHandlers {
         EntitySleepEvents.ALLOW_SLEEPING.register(INSTANCE::onPlayerSleepInBed);
     }
 
+    /*
+     * Точку мирового спавна в 1.21.9 переписали на LevelData.RespawnData (позиция +
+     * измерение + два угла). До этого это была пара «позиция, угол» на самом уровне.
+     * Разница спрятана в этих двух методах, чтобы во всех местах вызова кода на версии
+     * не зависело.
+     */
+
+    private static BlockPos getWorldSpawn(ServerLevel level) {
+        //? if >=1.21.9 {
+        return level.getRespawnData().pos();
+        //?} else
+        /*return level.getLevelData().getSpawnPos();*/
+    }
+
+    private static void setWorldSpawn(ServerLevel level, @Nullable ServerLevelData settings, BlockPos pos) {
+        //? if >=1.21.9 {
+        LevelData.RespawnData data = new LevelData.RespawnData(new GlobalPos(level.dimension(), pos), 0.0f, 0.0f);
+        level.setRespawnData(data);
+        if (settings != null) {
+            settings.setSpawn(data);
+        }
+        //?} else
+        /*level.setDefaultSpawnPos(pos, 0.0f);*/
+    }
+
     public void onPlayerFirstJoin(ServerPlayer serverPlayer) {
         ServerLevel level = serverPlayer.level();
         ResourceKey<Level> dimKey = level.dimension();
 
         if (spawnPositions.containsKey(dimKey)) {
             BlockPos correctPos = spawnPositions.get(dimKey);
-            LevelData.RespawnData rd = level.getRespawnData();
-            BlockPos currentWorldSpawn = rd.pos();
+            BlockPos currentWorldSpawn = getWorldSpawn(level);
 
             if (!currentWorldSpawn.equals(correctPos)) {
-                LevelData.RespawnData newd = new LevelData.RespawnData(new GlobalPos(level.dimension(), correctPos), 0.0f, 0.0f);
-                level.setRespawnData(newd);
-
-                if (level.getLevelData() instanceof ServerLevelData data) {
-                    data.setSpawn(newd);
-                }
+                setWorldSpawn(level, level.getLevelData() instanceof ServerLevelData data ? data : null, correctPos);
                 serverPlayer.teleportTo(level, correctPos.getX() + 0.5, correctPos.getY(), correctPos.getZ() + 0.5, Collections.emptySet(), serverPlayer.getYRot(), serverPlayer.getXRot(), true);
                 spawnPositions.remove(dimKey);
             }
@@ -212,18 +232,14 @@ public class ForgeEventHandlers {
                 case DEFAULT, SPHERES -> {
                     if (needsCheck) {
                         BlockPos pos = findSafeSpawnPoint(serverLevel, dimensionInfo, isSuitable, isSuitableChunk);
-                        LevelData.RespawnData data = new LevelData.RespawnData(new GlobalPos(serverLevel.dimension(), pos), 0.0f, 0.0f);
-                        serverLevel.setRespawnData(data);
-                        settings.setSpawn(data);
+                        setWorldSpawn(serverLevel, settings, pos);
                         spawnPositions.put(serverLevel.dimension(), pos);
                         return true;
                     }
                 }
                 case FLOATING, SPACE, CAVERN, CAVERNSPHERES -> {
                     BlockPos pos = findSafeSpawnPoint(serverLevel, dimensionInfo, isSuitable, isSuitableChunk);
-                    LevelData.RespawnData data = new LevelData.RespawnData(new GlobalPos(serverLevel.dimension(), pos), 0.0f, 0.0f);
-                    serverLevel.setRespawnData(data);
-                    settings.setSpawn(data);
+                    setWorldSpawn(serverLevel, settings, pos);
                     spawnPositions.put(serverLevel.dimension(), pos);
                     return true;
                 }
