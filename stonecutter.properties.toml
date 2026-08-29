@@ -4,7 +4,7 @@
 mod.id = "lostcities"
 mod.name = "Lost City"
 mod.group = "com.lostcities"
-mod.version = "1.1.0"
+mod.version = "1.2.0"
 
 # Loader для компиляции. В fabric.mod.json остаётся более мягкое требование >=0.15.0.
 deps.fabric_loader = "0.18.4"
