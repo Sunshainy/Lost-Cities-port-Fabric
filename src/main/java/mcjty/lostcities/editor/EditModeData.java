@@ -8,17 +8,31 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.saveddata.SavedDataType;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 
 import javax.annotation.Nonnull;
 import java.util.*;
 
-/**
- * In a world created in editmode this structure will contain information about all generated parts
+/*
+ * Сохраняемые данные в 1.21.5 перевели с ручного NBT на Codec + SavedDataType.
+ * Ниже обе формы: новая активна с 1.21.5, старая — до неё.
  */
 import net.minecraft.util.datafix.DataFixTypes;
 
+//? if >=1.21.5 {
+import net.minecraft.world.level.saveddata.SavedDataType;
+//?} else {
+/*import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
+*///?}
+
+/**
+ * In a world created in editmode this structure will contain information about all generated parts
+ */
 public class EditModeData extends SavedData {
 
     public static final String NAME = "lostcity_editdata";
@@ -35,6 +49,7 @@ public class EditModeData extends SavedData {
     }
     private final Map<ChunkCoord, List<PartData>> partData = new HashMap<>();
 
+    //? if >=1.21.5 {
     private static final Codec<EditModeData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             CoordWithPart.CODEC.listOf().fieldOf("data").forGetter(d -> {
                 List<CoordWithPart> result = new ArrayList<>();
@@ -49,22 +64,60 @@ public class EditModeData extends SavedData {
             CODEC,
             DataFixTypes.SAVED_DATA_COMMAND_STORAGE
     );
+    //?}
 
     @Nonnull
     public static EditModeData getData() {
         ServerLevel overworld = WorldTools.getOverworld();
         DimensionDataStorage storage = overworld.getDataStorage();
+        //? if >=1.21.5 {
         return storage.computeIfAbsent(TYPE);
+        //?} else
+        /*return storage.computeIfAbsent(new Factory<>(EditModeData::new, (compoundTag, provider) -> new EditModeData(compoundTag), DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);*/
     }
 
     private EditModeData() {
     }
 
+    //? if >=1.21.5 {
     private EditModeData(List<CoordWithPart> partData) {
         for (CoordWithPart d : partData) {
             addPartData(d.coord, d.part.y, d.part.partName);
         }
     }
+    //?} else {
+    /*public EditModeData(CompoundTag nbt) {
+        ListTag data = nbt.getList("data", Tag.TAG_COMPOUND);
+        for (Tag t : data) {
+            CompoundTag pdTag = (CompoundTag) t;
+            ResourceKey<Level> level = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(pdTag.getString("level")));
+            int chunkX = pdTag.getInt("x");
+            int chunkZ = pdTag.getInt("z");
+            ChunkCoord pos = new ChunkCoord(level, chunkX, chunkZ);
+            String part = pdTag.getString("part");
+            int y = pdTag.getInt("y");
+            addPartData(pos, y, part);
+        }
+    }
+
+    @Override
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        ListTag data = new ListTag();
+        partData.forEach((pos, list) -> {
+            for (PartData pd : list) {
+                CompoundTag pdTag = new CompoundTag();
+                pdTag.putString("level", pos.dimension().location().toString());
+                pdTag.putInt("x", pos.chunkX());
+                pdTag.putInt("z", pos.chunkZ());
+                pdTag.putString("part", pd.partName());
+                pdTag.putInt("y", pd.y());
+                data.add(pdTag);
+            }
+        });
+        tag.put("data", data);
+        return tag;
+    }
+    *///?}
 
     public void addPartData(ChunkCoord pos, int y, String partName) {
         partData.computeIfAbsent(pos, p -> new ArrayList<>()).add(new PartData(partName, y));

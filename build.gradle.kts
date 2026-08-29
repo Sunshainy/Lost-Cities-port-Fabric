@@ -36,6 +36,16 @@ val vanillaRenames: List<Pair<Regex, String>> = buildList {
         // NoiseRouter#initialDensityWithoutJaggedness() -> preliminarySurfaceLevel()
         add(Regex("\\bpreliminarySurfaceLevel\\(\\)") to "initialDensityWithoutJaggedness()")
     }
+    // Переименования из 1.21.5.
+    if (sc.current.parsed < "1.21.5") {
+        // WallBlock.NORTH_WALL -> NORTH и так далее по всем четырём сторонам.
+        add(Regex("\\bWallBlock\\.(NORTH|EAST|SOUTH|WEST)\\b") to "WallBlock.$1_WALL")
+        // Commands.hasPermission(x) появился вместе с PermissionCheck; до него
+        // предикат писали вручную.
+        add(Regex("Commands\\.hasPermission\\((Commands\\.LEVEL_[A-Z]+)\\)") to "source -> source.hasPermission($1)")
+        // NBT: аксессоры со значением по умолчанию появились в 1.21.5.
+        add(Regex("\\.getStringOr\\((\"[^\"]*\"), \"\"\\)") to ".getString($1)")
+    }
 }
 
 if (vanillaRenames.isNotEmpty()) {

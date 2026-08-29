@@ -99,7 +99,8 @@ public class ForgeEventHandlers {
     }
 
     public void onPlayerFirstJoin(ServerPlayer serverPlayer) {
-        ServerLevel level = serverPlayer.level();
+        // ServerPlayer#level() до 1.21.5 объявлен как Level; приведение корректно на всех версиях.
+        ServerLevel level = (ServerLevel) serverPlayer.level();
         ResourceKey<Level> dimKey = level.dimension();
 
         if (spawnPositions.containsKey(dimKey)) {

@@ -1,6 +1,14 @@
 package mcjty.lostcities;
 
+/*
+ * Forge Config API Port переехал с neoforge/v4/NeoForgeConfigRegistry на v5/ConfigRegistry
+ * в версии для 1.21.5. Подпись register() при этом не изменилась.
+ */
+//? if >=1.21.5 {
 import fuzs.forgeconfigapiport.fabric.api.v5.ConfigRegistry;
+//?} else {
+/*import fuzs.forgeconfigapiport.fabric.api.neoforge.v4.NeoForgeConfigRegistry;
+*///?}
 import mcjty.lostcities.network.PacketRequestProfile;
 import mcjty.lostcities.network.PacketReturnProfileToClient;
 import mcjty.lostcities.setup.*;
@@ -46,9 +54,15 @@ public class LostCities implements ModInitializer {
         dir.mkdirs();
 
         // Forge Config API Port keeps the NeoForge ModConfigSpec API intact on Fabric
+        //? if >=1.21.5 {
         ConfigRegistry.INSTANCE.register(MODID, ModConfig.Type.CLIENT, Config.CLIENT_CONFIG, "lostcities/client.toml");
         ConfigRegistry.INSTANCE.register(MODID, ModConfig.Type.COMMON, Config.COMMON_CONFIG, "lostcities/common.toml");
         ConfigRegistry.INSTANCE.register(MODID, ModConfig.Type.SERVER, Config.SERVER_CONFIG);
+        //?} else {
+        /*NeoForgeConfigRegistry.INSTANCE.register(MODID, ModConfig.Type.CLIENT, Config.CLIENT_CONFIG, "lostcities/client.toml");
+        NeoForgeConfigRegistry.INSTANCE.register(MODID, ModConfig.Type.COMMON, Config.COMMON_CONFIG, "lostcities/common.toml");
+        NeoForgeConfigRegistry.INSTANCE.register(MODID, ModConfig.Type.SERVER, Config.SERVER_CONFIG);
+        *///?}
 
         setup.preInit();
         setup.init();

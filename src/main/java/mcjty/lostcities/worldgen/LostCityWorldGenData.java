@@ -2,14 +2,28 @@ package mcjty.lostcities.worldgen;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import mcjty.lostcities.LostCities;
 import mcjty.lostcities.config.HighwayGenerationMode;
 import mcjty.lostcities.config.StreetGenerationMode;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.saveddata.SavedDataType;
 import net.minecraft.world.level.storage.DimensionDataStorage;
+
+/*
+ * Сохраняемые данные в 1.21.5 перевели с ручного NBT на Codec + SavedDataType.
+ * Ниже обе формы: новая активна с 1.21.5, старая — до неё.
+ */
+import net.minecraft.util.datafix.DataFixTypes;
+
+//? if >=1.21.5 {
+import net.minecraft.world.level.saveddata.SavedDataType;
+//?} else {
+/*import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+*///?}
 
 import javax.annotation.Nonnull;
 import java.util.HashMap;
@@ -23,7 +37,6 @@ import java.util.TreeMap;
  * resolves to LEGACY. Only CreateSpawnPosition marks a genuinely new world as
  * eligible to select profile-requested versioned modes.
  */
-import net.minecraft.util.datafix.DataFixTypes;
 
 public class LostCityWorldGenData extends SavedData {
 
@@ -33,6 +46,7 @@ public class LostCityWorldGenData extends SavedData {
     private static final String STREET_MODES_KEY = "streetModes";
     private static final String HIGHWAY_MODES_KEY = "highwayModes";
 
+    //? if >=1.21.5 {
     private static final Codec<StreetGenerationMode> STREET_MODE_CODEC = Codec.STRING.xmap(
             StreetGenerationMode::byName, StreetGenerationMode::name);
     private static final Codec<HighwayGenerationMode> HIGHWAY_MODE_CODEC = Codec.STRING.xmap(
@@ -51,6 +65,7 @@ public class LostCityWorldGenData extends SavedData {
             CODEC,
             DataFixTypes.SAVED_DATA_COMMAND_STORAGE
     );
+    //?}
 
     private boolean newWorldStreetModes;
     private boolean newWorldHighwayModes;
@@ -80,7 +95,10 @@ public class LostCityWorldGenData extends SavedData {
             throw new IllegalStateException("Cannot access Lost Cities world generation data without an overworld");
         }
         DimensionDataStorage storage = overworld.getDataStorage();
+        //? if >=1.21.5 {
         return storage.computeIfAbsent(TYPE);
+        //?} else
+        /*return storage.computeIfAbsent(new Factory<>(LostCityWorldGenData::new, LostCityWorldGenData::new, DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);*/
     }
 
     public static void initializeNewWorld(ServerLevel level) {
@@ -152,4 +170,48 @@ public class LostCityWorldGenData extends SavedData {
         return new TreeMap<>(highwayModes);
     }
 
+
+    //? if <1.21.5 {
+    /*    public LostCityWorldGenData(CompoundTag tag, HolderLookup.Provider provider) {
+        newWorldStreetModes = tag.getBoolean(NEW_WORLD_KEY);
+        newWorldHighwayModes = tag.getBoolean(NEW_WORLD_HIGHWAY_KEY);
+        CompoundTag modes = tag.getCompound(STREET_MODES_KEY);
+        for (String dimension : modes.getAllKeys()) {
+            if (modes.contains(dimension, Tag.TAG_STRING)) {
+                String value = modes.getString(dimension);
+                try {
+                    streetModes.put(dimension, StreetGenerationMode.byName(value));
+                } catch (IllegalArgumentException e) {
+                    LostCities.getLogger().error("Unknown persisted street mode '{}' for {}; using LEGACY", value, dimension);
+                    streetModes.put(dimension, StreetGenerationMode.LEGACY);
+                }
+            }
+        }
+        CompoundTag highwayModeTag = tag.getCompound(HIGHWAY_MODES_KEY);
+        for (String dimension : highwayModeTag.getAllKeys()) {
+            if (highwayModeTag.contains(dimension, Tag.TAG_STRING)) {
+                String value = highwayModeTag.getString(dimension);
+                try {
+                    highwayModes.put(dimension, HighwayGenerationMode.byName(value));
+                } catch (IllegalArgumentException e) {
+                    LostCities.getLogger().error("Unknown persisted highway mode '{}' for {}; using LEGACY", value, dimension);
+                    highwayModes.put(dimension, HighwayGenerationMode.LEGACY);
+                }
+            }
+        }
+    }
+
+    @Override
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        tag.putBoolean(NEW_WORLD_KEY, newWorldStreetModes);
+        tag.putBoolean(NEW_WORLD_HIGHWAY_KEY, newWorldHighwayModes);
+        CompoundTag modes = new CompoundTag();
+        streetModes.forEach((dimension, mode) -> modes.putString(dimension, mode.name()));
+        tag.put(STREET_MODES_KEY, modes);
+        CompoundTag highwayModeTag = new CompoundTag();
+        highwayModes.forEach((dimension, mode) -> highwayModeTag.putString(dimension, mode.name()));
+        tag.put(HIGHWAY_MODES_KEY, highwayModeTag);
+        return tag;
+    }
+    *///?}
 }

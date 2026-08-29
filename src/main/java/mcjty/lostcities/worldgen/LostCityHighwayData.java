@@ -13,8 +13,22 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.saveddata.SavedDataType;
 import net.minecraft.world.level.storage.DimensionDataStorage;
+
+/*
+ * Сохраняемые данные в 1.21.5 перевели с ручного NBT на Codec + SavedDataType.
+ * Ниже обе формы: новая активна с 1.21.5, старая — до неё.
+ */
+import net.minecraft.util.datafix.DataFixTypes;
+
+//? if >=1.21.5 {
+import net.minecraft.world.level.saveddata.SavedDataType;
+//?} else {
+/*import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+*///?}
 
 import javax.annotation.Nonnull;
 import java.util.HashMap;
@@ -27,12 +41,28 @@ import java.util.TreeMap;
  * Persistent cache of the expensive inter-city highway hub decision. Routes and
  * per-chunk highway information remain deterministic derived data.
  */
-import net.minecraft.util.datafix.DataFixTypes;
 
 public class LostCityHighwayData extends SavedData {
 
     public static final String NAME = "LostCityHighwayData";
     private static final int FORMAT_VERSION = 2;
+
+    // Имена полей NBT. В форме на Codec они заданы прямо в кодеке, поэтому апстрим их
+    // из класса убрал; для ручной формы они по-прежнему нужны.
+    //? if <1.21.5 {
+    /*private static final String VERSION_KEY = "version";
+    private static final String DIMENSIONS_KEY = "dimensions";
+    private static final String SIGNATURE_KEY = "signature";
+    private static final String HUBS_KEY = "hubs";
+    private static final String CELL_X_KEY = "cellX";
+    private static final String CELL_Z_KEY = "cellZ";
+    private static final String HAS_HUB_KEY = "hasHub";
+    private static final String CHUNK_X_KEY = "chunkX";
+    private static final String CHUNK_Z_KEY = "chunkZ";
+    private static final String POTENTIAL_KEY = "potential";
+    private static final String CITY_LEVEL_KEY = "cityLevel";
+    *///?}
+
     private static final long HUB_ALGORITHM_VERSION = 3L;
 
     private record PersistedHub(int cellX, int cellZ, boolean hasHub, int chunkX, int chunkZ,
@@ -71,6 +101,7 @@ public class LostCityHighwayData extends SavedData {
         ).apply(instance, PersistedDimension::new));
     }
 
+    //? if >=1.21.5 {
     private static final Codec<LostCityHighwayData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             PersistedDimension.CODEC.listOf().fieldOf("dimensions").forGetter(LostCityHighwayData::snapshot)
     ).apply(instance, LostCityHighwayData::new));
@@ -80,6 +111,7 @@ public class LostCityHighwayData extends SavedData {
             CODEC,
             DataFixTypes.SAVED_DATA_COMMAND_STORAGE
     );
+    //?}
 
     private final Map<String, DimensionHubData> dimensions = new HashMap<>();
 
@@ -101,7 +133,10 @@ public class LostCityHighwayData extends SavedData {
             throw new IllegalStateException("Cannot access Lost Cities highway data without an overworld");
         }
         DimensionDataStorage storage = overworld.getDataStorage();
+        //? if >=1.21.5 {
         return storage.computeIfAbsent(TYPE);
+        //?} else
+        /*return storage.computeIfAbsent(new Factory<>(LostCityHighwayData::new, LostCityHighwayData::new, DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);*/
     }
 
     /**
@@ -225,4 +260,59 @@ public class LostCityHighwayData extends SavedData {
             this.signature = signature;
         }
     }
+
+    //? if <1.21.5 {
+    /*    public LostCityHighwayData(CompoundTag tag, HolderLookup.Provider provider) {
+        if (tag.getInt(VERSION_KEY) != FORMAT_VERSION) {
+            return;
+        }
+        CompoundTag dimensionTags = tag.getCompound(DIMENSIONS_KEY);
+        for (String dimensionId : dimensionTags.getAllKeys()) {
+            if (!dimensionTags.contains(dimensionId, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+            CompoundTag dimensionTag = dimensionTags.getCompound(dimensionId);
+            DimensionHubData dimension = new DimensionHubData(dimensionTag.getLong(SIGNATURE_KEY));
+            ListTag hubs = dimensionTag.getList(HUBS_KEY, Tag.TAG_COMPOUND);
+            for (Tag value : hubs) {
+                CompoundTag hubTag = (CompoundTag) value;
+                HubKey key = new HubKey(hubTag.getInt(CELL_X_KEY), hubTag.getInt(CELL_Z_KEY));
+                Optional<HighwayHub> hub = hubTag.getBoolean(HAS_HUB_KEY)
+                        ? Optional.of(new HighwayHub(key, hubTag.getInt(CHUNK_X_KEY), hubTag.getInt(CHUNK_Z_KEY),
+                        hubTag.getInt(POTENTIAL_KEY), hubTag.getInt(CITY_LEVEL_KEY)))
+                        : Optional.empty();
+                dimension.hubs.put(key, hub);
+            }
+            dimensions.put(dimensionId, dimension);
+        }
+    }
+
+    @Override
+    public synchronized CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        tag.putInt(VERSION_KEY, FORMAT_VERSION);
+        CompoundTag dimensionTags = new CompoundTag();
+        new TreeMap<>(dimensions).forEach((dimensionId, dimension) -> {
+            CompoundTag dimensionTag = new CompoundTag();
+            dimensionTag.putLong(SIGNATURE_KEY, dimension.signature);
+            ListTag hubs = new ListTag();
+            new TreeMap<>(dimension.hubs).forEach((key, hub) -> {
+                CompoundTag hubTag = new CompoundTag();
+                hubTag.putInt(CELL_X_KEY, key.planningCellX());
+                hubTag.putInt(CELL_Z_KEY, key.planningCellZ());
+                hubTag.putBoolean(HAS_HUB_KEY, hub.isPresent());
+                hub.ifPresent(value -> {
+                    hubTag.putInt(CHUNK_X_KEY, value.chunkX());
+                    hubTag.putInt(CHUNK_Z_KEY, value.chunkZ());
+                    hubTag.putInt(POTENTIAL_KEY, value.potentialScore());
+                    hubTag.putInt(CITY_LEVEL_KEY, value.cityLevel());
+                });
+                hubs.add(hubTag);
+            });
+            dimensionTag.put(HUBS_KEY, hubs);
+            dimensionTags.put(dimensionId, dimensionTag);
+        });
+        tag.put(DIMENSIONS_KEY, dimensionTags);
+        return tag;
+    }
+    *///?}
 }
