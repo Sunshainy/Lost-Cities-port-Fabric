@@ -1950,7 +1950,7 @@ public class LostCityTerrainFeature {
                     if (Config.FORCE_SAPLING_GROWTH.get()) {
                         RandomSource forkedRand = GenerationContext.current().random().fork();
                         GlobalTodo.get(world.getLevel()).addTodo(pos, (level) -> {
-                            if (level.isAreaLoaded(pos, 1) && level.getBlockState(pos).getBlock() instanceof SaplingBlock) {
+                            if (level.hasChunksAt(pos, pos) && level.getBlockState(pos).getBlock() instanceof SaplingBlock) {
                                 level.setBlock(pos, finalB, Block.UPDATE_CLIENTS);
                                 // Use a fork so deferred growth never shares the generation context's random source
                                 saplingBlock.advanceTree(level, pos, finalB, forkedRand);

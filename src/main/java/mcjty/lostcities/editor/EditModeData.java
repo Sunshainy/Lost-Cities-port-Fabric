@@ -17,6 +17,8 @@ import java.util.*;
 /**
  * In a world created in editmode this structure will contain information about all generated parts
  */
+import net.minecraft.util.datafix.DataFixTypes;
+
 public class EditModeData extends SavedData {
 
     public static final String NAME = "lostcity_editdata";
@@ -44,7 +46,8 @@ public class EditModeData extends SavedData {
     private static final SavedDataType<EditModeData> TYPE = new SavedDataType<>(
             NAME,
             EditModeData::new,
-            CODEC
+            CODEC,
+            DataFixTypes.SAVED_DATA_COMMAND_STORAGE
     );
 
     @Nonnull

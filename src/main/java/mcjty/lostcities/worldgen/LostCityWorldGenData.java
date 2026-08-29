@@ -23,6 +23,8 @@ import java.util.TreeMap;
  * resolves to LEGACY. Only CreateSpawnPosition marks a genuinely new world as
  * eligible to select profile-requested versioned modes.
  */
+import net.minecraft.util.datafix.DataFixTypes;
+
 public class LostCityWorldGenData extends SavedData {
 
     public static final String NAME = "LostCityWorldGenData";
@@ -46,7 +48,8 @@ public class LostCityWorldGenData extends SavedData {
     private static final SavedDataType<LostCityWorldGenData> TYPE = new SavedDataType<>(
             NAME,
             LostCityWorldGenData::new,
-            CODEC
+            CODEC,
+            DataFixTypes.SAVED_DATA_COMMAND_STORAGE
     );
 
     private boolean newWorldStreetModes;

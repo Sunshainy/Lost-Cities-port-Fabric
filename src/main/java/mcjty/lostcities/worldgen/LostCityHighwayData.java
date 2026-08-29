@@ -27,6 +27,8 @@ import java.util.TreeMap;
  * Persistent cache of the expensive inter-city highway hub decision. Routes and
  * per-chunk highway information remain deterministic derived data.
  */
+import net.minecraft.util.datafix.DataFixTypes;
+
 public class LostCityHighwayData extends SavedData {
 
     public static final String NAME = "LostCityHighwayData";
@@ -75,7 +77,8 @@ public class LostCityHighwayData extends SavedData {
     private static final SavedDataType<LostCityHighwayData> TYPE = new SavedDataType<>(
             NAME,
             LostCityHighwayData::new,
-            CODEC
+            CODEC,
+            DataFixTypes.SAVED_DATA_COMMAND_STORAGE
     );
 
     private final Map<String, DimensionHubData> dimensions = new HashMap<>();

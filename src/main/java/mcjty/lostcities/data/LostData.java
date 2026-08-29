@@ -11,6 +11,8 @@ import net.minecraft.world.level.storage.DimensionDataStorage;
 
 import javax.annotation.Nonnull;
 
+import net.minecraft.util.datafix.DataFixTypes;
+
 public class LostData extends SavedData {
 
     public static final String NAME = "lostcities_data";
@@ -23,7 +25,8 @@ public class LostData extends SavedData {
     private static final SavedDataType<LostData> TYPE = new SavedDataType<>(
             NAME,
             LostData::new,
-            CODEC
+            CODEC,
+            DataFixTypes.SAVED_DATA_COMMAND_STORAGE
     );
 
     private String selectedProfile = "";

@@ -23,7 +23,7 @@ public class ClientEventHandlers {
                         Minecraft.getInstance().setScreen(new GuiLCConfig(createWorldScreen))
                 ).bounds(screen.width - 100, 40, 70, 20).build();
                 lostCitiesButton.visible = false;
-                Screens.getWidgets(screen).add(lostCitiesButton);
+                Screens.getButtons(screen).add(lostCitiesButton);
                 // Only show the button while the "More" tab is active
                 ScreenEvents.afterTick(screen).register(s ->
                         lostCitiesButton.visible = createWorldScreen.tabManager.getCurrentTab() instanceof CreateWorldScreen.MoreTab);

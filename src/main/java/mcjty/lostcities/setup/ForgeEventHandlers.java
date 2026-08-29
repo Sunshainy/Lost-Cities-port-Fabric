@@ -63,7 +63,7 @@ public class ForgeEventHandlers {
     public static void register() {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> ModCommands.register(dispatcher));
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> INSTANCE.onPlayerFirstJoin(handler.player));
-        ServerTickEvents.END_LEVEL_TICK.register(INSTANCE::onWorldTick);
+        ServerTickEvents.END_WORLD_TICK.register(INSTANCE::onWorldTick);
         ServerLifecycleEvents.SERVER_STARTING.register(server -> cleanUp());
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             cleanUp();
@@ -128,7 +128,7 @@ public class ForgeEventHandlers {
             LostCityFeature.globalDimensionInfoDirtyCounter++;
             IDimensionInfo dimensionInfo = Registration.LOSTCITY_FEATURE.get().getDimensionInfo(serverLevel);
             if (dimensionInfo == null) {
-                return;
+                return false;
             }
             LostCityProfile profile = dimensionInfo.getProfile();
 
@@ -408,7 +408,7 @@ public class ForgeEventHandlers {
         if (!(state.getBlock() instanceof BedBlock)) {
             return false;
         }
-        Direction direction = Blocks.BLACK_BED.getBedDirection(state, world, pos);
+        Direction direction = BedBlock.getBedOrientation(world, pos);
         Block b1 = world.getBlockState(pos.below()).getBlock();
         Block b2 = world.getBlockState(pos.relative(direction.getOpposite()).below()).getBlock();
         Block b = BuiltInRegistries.BLOCK.getValue(Identifier.parse(Config.SPECIAL_BED_BLOCK.get()));
@@ -514,7 +514,7 @@ public class ForgeEventHandlers {
         } else {
             ServerLevel destWorld = player.level().getServer().getLevel(Registration.DIMENSION);
             if (destWorld == null) {
-                player.sendSystemMessage(ComponentFactory.literal("Error finding Lost City dimension: " + LOSTCITY + "!").withStyle(ChatFormatting.RED));
+                player.displayClientMessage(ComponentFactory.literal("Error finding Lost City dimension: " + LOSTCITY + "!").withStyle(ChatFormatting.RED), false);
             } else {
                 BlockPos location = findLocation(bedLocation, destWorld);
                 CustomTeleporter.teleportToDimension(player, destWorld, location);

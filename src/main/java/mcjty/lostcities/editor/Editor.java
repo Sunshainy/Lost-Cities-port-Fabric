@@ -30,7 +30,7 @@ public class Editor {
 
         CompiledPalette finalPalette = palette;
 
-        player.level().getServer().doRunTask(new TickTask(3, () -> {
+        player.level().getServer().schedule(new TickTask(3, () -> {
             if (clear) {
                 for (int y = 0; y < part.getSliceCount(); y++) {
                     for (int x = 0; x < part.getXSize(); x++) {
