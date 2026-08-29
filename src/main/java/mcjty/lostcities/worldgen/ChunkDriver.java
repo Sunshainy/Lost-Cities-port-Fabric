@@ -193,7 +193,12 @@ public class ChunkDriver {
         }
         BlockState newAdjacent = null;
         try {
+            // Подпись updateShape изменилась в 1.21.2: добавились доступ к миру,
+            // отдельный tick-scheduler и источник случайности.
+            //? if >=1.21.2 {
             newAdjacent = adjacent.updateShape(region, region, pos, direction, pos.relative(direction), state, region.getRandom());
+            //?} else
+            /*newAdjacent = adjacent.updateShape(direction, state, region, pos, pos.relative(direction));*/
         } catch (Exception e) {
             // We got an exception. For example for beehives there can potentially be a problem so in this case we just ignore it
             return adjacent;

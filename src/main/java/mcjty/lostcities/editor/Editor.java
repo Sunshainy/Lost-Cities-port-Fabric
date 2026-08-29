@@ -30,7 +30,11 @@ public class Editor {
 
         CompiledPalette finalPalette = palette;
 
+        // doRunTask в 1.21.2 стал protected, публичная замена — schedule(TickTask).
+        //? if >=1.21.2 {
         player.level().getServer().schedule(new TickTask(3, () -> {
+        //?} else
+        /*player.level().getServer().doRunTask(new TickTask(3, () -> {*/
             if (clear) {
                 for (int y = 0; y < part.getSliceCount(); y++) {
                     for (int x = 0; x < part.getXSize(); x++) {

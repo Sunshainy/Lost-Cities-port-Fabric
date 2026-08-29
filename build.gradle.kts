@@ -46,6 +46,38 @@ val vanillaRenames: List<Pair<Regex, String>> = buildList {
         // NBT: аксессоры со значением по умолчанию появились в 1.21.5.
         add(Regex("\\.getStringOr\\((\"[^\"]*\"), \"\"\\)") to ".getString($1)")
     }
+    // Переименования из 1.21.2.
+    if (sc.current.parsed < "1.21.2") {
+        // RegistryAccess: lookupOrThrow/lookup -> registryOrThrow/registry.
+        // Возвращают Registry вместо HolderLookup, а нужные тут getResourceKey,
+        // getOrThrow и getKey есть у обоих.
+        add(Regex("\\.lookupOrThrow\\(") to ".registryOrThrow(")
+        add(Regex("registryAccess\\(\\)\\.lookup\\(") to "registryAccess().registry(")
+        // Registry: get() стал возвращать Optional<Holder.Reference>, а прямое
+        // значение переехало в getValue(). Порядок правил важен — сперва get,
+        // потом getValue, иначе второе правило переписало бы результат первого.
+        add(Regex("BuiltInRegistries\\.([A-Z_]+)\\.get\\(") to "BuiltInRegistries.$1.getHolder(")
+        add(Regex("BuiltInRegistries\\.([A-Z_]+)\\.getValue\\(") to "BuiltInRegistries.$1.get(")
+        // Тот же сдвиг get/getValue у обычного Registry, полученного из RegistryAccess.
+        add(Regex("registryOrThrow\\((Registries\\.[A-Z_]+)\\)\\.getValue\\(") to "registryOrThrow($1).get(")
+        add(Regex("\\.getValueOrThrow\\(") to ".getOrThrow(")
+        // getOrThrow у Registry стал возвращать Holder.Reference; прежнее поведение —
+        // getHolderOrThrow. Правила привязаны к именам получателей намеренно: у наших
+        // собственных AssetRegistries есть свой getOrThrow, и его трогать нельзя.
+        // Если апстрим переименует переменную, правило просто перестанет срабатывать
+        // и сборка упадёт — то есть отказ будет заметным, а не тихим.
+        add(Regex("\\bstructures\\.getOrThrow\\(") to "structures.getHolderOrThrow(")
+        add(Regex("\\bbiomeRegistry\\.getOrThrow\\(") to "biomeRegistry.getHolderOrThrow(")
+        // Границы мира. getMinY() совпадает по смыслу с getMinBuildHeight(), а вот
+        // getMaxY() включающий, тогда как getMaxBuildHeight() исключающий, поэтому
+        // здесь нужен сдвиг на единицу, а не просто переименование.
+        //
+        // Правила требуют получателя перед точкой намеренно: в varia/GeometryTools
+        // есть свои getMinY()/getMaxY() у вспомогательного бокса, и их трогать нельзя.
+        val receiver = "((?:[A-Za-z_][A-Za-z0-9_]*\\.)*[A-Za-z_][A-Za-z0-9_]*(?:\\(\\))?)"
+        add(Regex("$receiver\\.getMinY\\(\\)") to "$1.getMinBuildHeight()")
+        add(Regex("$receiver\\.getMaxY\\(\\)") to "($1.getMaxBuildHeight() - 1)")
+    }
 }
 
 if (vanillaRenames.isNotEmpty()) {

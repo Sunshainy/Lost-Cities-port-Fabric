@@ -109,7 +109,12 @@ public class ForgeEventHandlers {
 
             if (!currentWorldSpawn.equals(correctPos)) {
                 setWorldSpawn(level, level.getLevelData() instanceof ServerLevelData data ? data : null, correctPos);
+                // Перегрузка с набором относительных осей и флагом появилась в 1.21.2;
+                // до неё телепорт между измерениями делался коротким вариантом.
+                //? if >=1.21.2 {
                 serverPlayer.teleportTo(level, correctPos.getX() + 0.5, correctPos.getY(), correctPos.getZ() + 0.5, Collections.emptySet(), serverPlayer.getYRot(), serverPlayer.getXRot(), true);
+                //?} else
+                /*serverPlayer.teleportTo(level, correctPos.getX() + 0.5, correctPos.getY(), correctPos.getZ() + 0.5, serverPlayer.getYRot(), serverPlayer.getXRot());*/
                 spawnPositions.remove(dimKey);
             }
         }
