@@ -1,6 +1,10 @@
 MIT License
 
-Copyright (c) 2026 Sunshainy
+Copyright (c) 2017 McJty — original Lost Cities mod
+Copyright (c) 2026 Sunshainy — Fabric port
+
+The Fabric loader adaptation reuses work from https://github.com/Arilas/LostCities
+(MIT), Copyright (c) 2026 Oleksandr Hanzha.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
