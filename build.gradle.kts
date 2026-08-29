@@ -32,24 +32,39 @@ version = "${property("mod.version")}+$versionRange"
 base.archivesName = property("mod.id") as String
 
 repositories {
-    maven("https://maven.shedaniel.me/")
-    maven("https://maven.architectury.dev/")
+    mavenCentral()
+    // Forge Config API Port (fuzs) — даёт ModConfigSpec, благодаря чему
+    // setup/Config.java и config/LostCityProfile.java берутся из оригинала без правок.
+    maven("https://raw.githubusercontent.com/Fuzss/modresources/main/maven/") {
+        name = "Fuzs Mod Resources"
+    }
 }
 
 dependencies {
     minecraft("com.mojang:minecraft:${sc.current.version}")
-    mappings("net.fabricmc:yarn:${scProp("deps.yarn_mappings")}:v2")
+    // Официальные маппинги Mojang, а не Yarn: исходники оригинала написаны под них,
+    // поэтому апстрим применяется через cherry-pick без перевода имён.
+    mappings(loom.officialMojangMappings())
     modImplementation("net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${scProp("deps.fabric_api")}")
+    modImplementation("fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${scProp("deps.forge_config_api_port")}")
+    // javax.annotation.Nonnull/Nullable — оригинал использует их повсеместно.
+    compileOnly("com.google.code.findbugs:jsr305:3.0.2")
+}
+
+sourceSets {
+    main {
+        // Шесть JSON тегов блоков, ранее генерировавшихся датагеном оригинала.
+        resources.srcDir(rootProject.file("src/generated/resources"))
+    }
 }
 
 loom {
-    splitEnvironmentSourceSets()
+    accessWidenerPath = rootProject.file("src/main/resources/META-INF/lostcities.accesswidener")
 
     mods {
-        create("lostcity") {
+        create("lostcities") {
             sourceSet(sourceSets["main"])
-            sourceSet(sourceSets["client"])
         }
     }
 }
@@ -79,29 +94,20 @@ tasks {
 
         filesMatching("fabric.mod.json") { expand(props) }
 
-        // В 1.21 каталоги датапаков переименованы в единственное число
-        // (data/<ns>/loot_tables -> loot_table и т.д.). Держим исходники в одном
-        // виде и переименовываем при сборке, чтобы не дублировать JSON по версиям.
-        if (sc.current.parsed >= "1.21") {
-            filesMatching("data/*/loot_tables/**") {
-                path = path.replace("/loot_tables/", "/loot_table/")
+        // Исходники ресурсов лежат в раскладке 1.21.11 (верх диапазона). Для более
+        // старых версий каталоги датапака переименовываются обратно при сборке,
+        // чтобы не держать по копии JSON на версию.
+        if (sc.current.parsed < "1.21") {
+            filesMatching("data/*/loot_table/**") {
+                path = path.replace("/loot_table/", "/loot_tables/")
+            }
+        }
+        if (sc.current.parsed < "1.21.9") {
+            filesMatching("data/*/tags/block/**") {
+                path = path.replace("/tags/block/", "/tags/blocks/")
             }
         }
     }
-
-    // У клиентского source set своих ресурсов нет, поэтому processClientResources
-    // уходит в NO-SOURCE, каталог вывода не создаётся, и Fabric Loader в dev-запуске
-    // пишет "Class path entries reference missing files ... the game may not load
-    // properly!". На собранный джарник это не влияет, но такой warning в каждом логе
-    // мешает замечать настоящие, поэтому каталог создаём сами.
-    val ensureClientResourcesDir = register("ensureClientResourcesDir") {
-        val dir = named<ProcessResources>("processClientResources").get().destinationDir
-        // outputs.dir здесь объявлять нельзя: тогда Gradle считает эту задачу
-        // производителем каталога, который читают jar и remapJar, и требует
-        // явную зависимость от них. Задача дешёвая, пусть просто выполняется всегда.
-        doLast { dir.mkdirs() }
-    }
-    named("clientClasses") { dependsOn(ensureClientResourcesDir) }
 
     jar {
         from(rootProject.file("LICENSE")) {
@@ -118,4 +124,3 @@ tasks {
         into(rootProject.layout.buildDirectory.dir("libs/${scProp("mod.version")}"))
     }
 }
-

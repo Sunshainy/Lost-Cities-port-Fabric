@@ -1,0 +1,12 @@
+accessWidener v2 named
+
+# Кнопка "Cities" в экране создания мира: нужно знать активную вкладку,
+# чтобы показывать кнопку только на вкладке More.
+accessible field net/minecraft/client/gui/screens/worldselection/CreateWorldScreen tabManager Lnet/minecraft/client/gui/components/tabs/TabManager;
+accessible class net/minecraft/client/gui/screens/worldselection/CreateWorldScreen$MoreTab
+
+# NoiseChunkOpt/HeightGenOpt переписывают внутренности ванильного NoiseChunk.
+accessible method net/minecraft/world/level/levelgen/NoiseChunk getInterpolatedState ()Lnet/minecraft/world/level/block/state/BlockState;
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$Marker
+accessible class net/minecraft/world/level/levelgen/DensityFunctions$Marker$Type
+accessible class net/minecraft/world/level/levelgen/NoiseChunk$NoiseChunkDensityFunction

@@ -1,0 +1,43 @@
+package mcjty.lostcities.worldgen;
+
+import mcjty.lostcities.setup.Registration;
+import mcjty.lostcities.worldgen.gen.Spheres;
+import net.minecraft.core.Holder;
+import net.minecraft.server.level.WorldGenRegion;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.levelgen.feature.Feature;
+import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
+import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
+import net.neoforged.neoforge.common.Tags;
+
+public class LostCitySphereFeature extends Feature<NoneFeatureConfiguration> {
+
+    public LostCitySphereFeature() {
+        super(NoneFeatureConfiguration.CODEC);
+    }
+
+    @Override
+    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> context) {
+        WorldGenLevel level = context.level();
+        if (level instanceof WorldGenRegion region) {
+            LostCityFeature lostCityFeature = Registration.LOSTCITY_FEATURE.get();
+            return lostCityFeature.runWithDimensionInfo(level, diminfo -> {
+                ChunkPos center = region.getCenter();
+                Holder<Biome> biome = region.getBiome(center.getMiddleBlockPosition(60));
+                if (biome.is(Tags.Biomes.IS_VOID)) {
+                    return false;
+                }
+
+                int chunkX = center.x;
+                int chunkZ = center.z;
+                try (GenerationContext.Scope ignored = GenerationContext.open(level, diminfo.getSeed(), diminfo.getType(), chunkX, chunkZ)) {
+                    Spheres.generateSpheres(diminfo.getFeature(), region, region.getChunk(chunkX, chunkZ));
+                }
+                return true;
+            });
+        }
+        return false;
+    }
+}

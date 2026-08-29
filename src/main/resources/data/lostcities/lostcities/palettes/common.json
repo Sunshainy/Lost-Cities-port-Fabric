@@ -203,10 +203,6 @@
       "block": "minecraft:oak_fence"
     },
     {
-      "char": "w",
-      "block": "minecraft:cobblestone_wall"
-    },
-    {
       "char": "L",
       "block": "minecraft:bookshelf"
     },

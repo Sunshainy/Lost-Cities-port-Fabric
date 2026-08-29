@@ -19,6 +19,7 @@ mod.mc_releases = ["1.20", "1.20.1"]
 
 deps.yarn_mappings = "1.20.1+build.10"
 deps.fabric_api = "0.92.7+1.20.1"
+deps.forge_config_api_port = "8.0.3"
 
 ["1.20.4"]
 # Канал на Modrinth/CurseForge
@@ -28,6 +29,7 @@ mod.mc_releases = ["1.20.2", "1.20.3", "1.20.4"]
 
 deps.yarn_mappings = "1.20.4+build.3"
 deps.fabric_api = "0.97.3+1.20.4"
+deps.forge_config_api_port = "20.4.3"
 
 ["1.20.6"]
 # Канал на Modrinth/CurseForge
@@ -37,6 +39,7 @@ mod.mc_releases = ["1.20.5", "1.20.6"]
 
 deps.yarn_mappings = "1.20.6+build.3"
 deps.fabric_api = "0.100.8+1.20.6"
+deps.forge_config_api_port = "20.6.1"
 
 ["1.21.1"]
 # Канал на Modrinth/CurseForge
@@ -46,6 +49,7 @@ mod.mc_releases = ["1.21", "1.21.1"]
 
 deps.yarn_mappings = "1.21.1+build.3"
 deps.fabric_api = "0.116.15+1.21.1"
+deps.forge_config_api_port = "21.1.6"
 
 ["1.21.4"]
 # Канал на Modrinth/CurseForge
@@ -55,6 +59,7 @@ mod.mc_releases = ["1.21.2", "1.21.3", "1.21.4"]
 
 deps.yarn_mappings = "1.21.4+build.8"
 deps.fabric_api = "0.119.4+1.21.4"
+deps.forge_config_api_port = "21.4.3"
 
 ["1.21.8"]
 # Канал на Modrinth/CurseForge
@@ -64,6 +69,7 @@ mod.mc_releases = ["1.21.5", "1.21.6", "1.21.7", "1.21.8"]
 
 deps.yarn_mappings = "1.21.8+build.1"
 deps.fabric_api = "0.136.1+1.21.8"
+deps.forge_config_api_port = "21.8.2"
 
 ["1.21.11"]
 # Канал на Modrinth/CurseForge
@@ -73,3 +79,4 @@ mod.mc_releases = ["1.21.9", "1.21.10", "1.21.11"]
 
 deps.yarn_mappings = "1.21.11+build.6"
 deps.fabric_api = "0.141.6+1.21.11"
+deps.forge_config_api_port = "21.11.1"
