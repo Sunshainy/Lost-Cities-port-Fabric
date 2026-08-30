@@ -43,8 +43,12 @@ Three things are required:
    NeoForge's `ModConfigSpec`; this mod provides that API on Fabric. (On 1.20.1 the same mod
    supplies its Forge-era ancestor, `ForgeConfigSpec`, which the build renames onto.)
 
-Drop all three plus this mod's jar into `mods/`. The mod runs on both client and dedicated
-server, and must be present on both.
+Drop all three plus this mod's jar into `mods/`.
+
+**Where it has to be installed:** on the server. The mod registers no blocks or items — only two
+worldgen features and a set of server-side dynamic registries — so a vanilla client can connect
+to a dedicated server running it. Install it client-side for singleplayer, or when you want the
+profile picker on the world-creation screen.
 
 ## Getting started
 
