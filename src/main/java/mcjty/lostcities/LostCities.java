@@ -3,6 +3,11 @@ package mcjty.lostcities;
 /*
  * Forge Config API Port переехал с neoforge/v4/NeoForgeConfigRegistry на v5/ConfigRegistry
  * в версии для 1.21.5. Подпись register() при этом не изменилась.
+ *
+ * На 1.20.1 действует ещё более раннее, форджевое поколение того же API
+ * (api/config/v2/ForgeConfigRegistry). Ветки Stonecutter под него нет: имена
+ * переписываются переименованиями из build.gradle.kts, потому что там меняются
+ * только названия классов и пакетов, а подписи те же.
  */
 //? if >=1.21.5 {
 import fuzs.forgeconfigapiport.fabric.api.v5.ConfigRegistry;

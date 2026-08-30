@@ -111,6 +111,35 @@ val vanillaRenames: List<Pair<Regex, String>> = buildList {
                 to "BuiltInRegistries.BLOCK.getHolder(net.minecraft.resources.ResourceKey.create("
                         + "net.minecraft.core.registries.Registries.BLOCK, new ResourceLocation($1)))")
     }
+    // Переименования из 1.20.2. Группа идёт после 1.20.5 намеренно: два её правила
+    // разбирают текст, который получается уже после правил той группы (setLootTable
+    // без ключа реестра, Factory вместо Codec).
+    if (sc.current.parsed < "1.20.2") {
+        /*
+         * Конфиги. 1.20.1 — единственная версия диапазона на форджевой эпохе
+         * Forge Config API Port (8.0.3): там, где выше лежит neoforge/v4 или v5,
+         * здесь api/config/v2, а сам ModConfigSpec ещё зовётся ForgeConfigSpec.
+         * NeoForge переименовал класс, не меняя ни вложенных типов (Builder,
+         * ConfigValue, IntValue, BooleanValue, EnumValue, Range), ни подписей
+         * register(), поэтому переименования достаточно и ветка Stonecutter не нужна.
+         */
+        add(Regex("fuzs\\.forgeconfigapiport\\.fabric\\.api\\.neoforge\\.v4\\.NeoForgeConfigRegistry")
+                to "fuzs.forgeconfigapiport.api.config.v2.ForgeConfigRegistry")
+        add(Regex("\\bNeoForgeConfigRegistry\\b") to "ForgeConfigRegistry")
+        add(Regex("net\\.neoforged\\.fml\\.config\\.ModConfig") to "net.minecraftforge.fml.config.ModConfig")
+        add(Regex("net\\.neoforged\\.neoforge\\.common\\.ModConfigSpec") to "net.minecraftforge.common.ForgeConfigSpec")
+        add(Regex("\\bModConfigSpec\\b") to "ForgeConfigSpec")
+        // SavedData.Factory и датафиксеры сохранений появились в 1.20.2: до них
+        // computeIfAbsent принимает десериализатор и конструктор прямо, причём в
+        // обратном порядке — Function перед Supplier. Отсюда $2 перед $1: текстом
+        // обе ссылки одинаковы, но порядок аргументов должен быть верным по смыслу.
+        add(Regex("computeIfAbsent\\(new Factory<>\\((\\w+)::new, (\\w+)::new, DataFixTypes\\.[A-Z_]+\\), NAME\\)")
+                to "computeIfAbsent($2::new, $1::new, NAME)")
+        // Перегрузка setLootTable без сида появилась в 1.20.2. До неё сид обязателен,
+        // и ноль — то же самое, что делает односложная перегрузка: она сид не трогает,
+        // а по умолчанию он и так нулевой (сундук берёт случайный сид при вскрытии).
+        add(Regex("\\.setLootTable\\((new ResourceLocation\\([^;()]*\\))\\)") to ".setLootTable($1, 0L)")
+    }
 }
 
 if (vanillaRenames.isNotEmpty()) {
