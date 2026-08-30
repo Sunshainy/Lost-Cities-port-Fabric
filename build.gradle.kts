@@ -88,6 +88,29 @@ val vanillaRenames: List<Pair<Regex, String>> = buildList {
         add(Regex("$receiver\\.getMinY\\(\\)") to "$1.getMinBuildHeight()")
         add(Regex("$receiver\\.getMaxY\\(\\)") to "($1.getMaxBuildHeight() - 1)")
     }
+    // Переименования из 1.20.5. Группа идёт последней намеренно: три её правила
+    // работают по тексту, который получается уже после правил 1.21 и 1.21.2
+    // (ResourceLocation вместо Identifier, getHolder вместо get).
+    if (sc.current.parsed < "1.20.5") {
+        // ChunkStatus переехал в подпакет chunk.status.
+        add(Regex("net\\.minecraft\\.world\\.level\\.chunk\\.status\\.ChunkStatus")
+                to "net.minecraft.world.level.chunk.ChunkStatus")
+        // SpawnData получил третий параметр (снаряжение) в 1.20.5.
+        add(Regex("new SpawnData\\(sd, Optional\\.empty\\(\\), Optional\\.empty\\(\\)\\)")
+                to "new SpawnData(sd, Optional.empty())")
+        // Реестр лут-таблиц появился в 1.20.5: до него setLootTable принимает
+        // сам ResourceLocation, а не ключ реестра.
+        add(Regex("setLootTable\\(ResourceKey\\.create\\(Registries\\.LOOT_TABLE, ([^;]*)\\)\\)")
+                to "setLootTable($1)")
+        // Registry.getHolder(ResourceLocation) появился в 1.20.5; до него есть
+        // только перегрузка по ключу реестра. Возвращаемый тип тот же —
+        // Optional<Holder.Reference<Block>>, поэтому вызывающий код не меняется.
+        // Имена классов полные: так правило не требует новых импортов и файлы
+        // апстрима остаются нетронутыми, что важно для cherry-pick.
+        add(Regex("BuiltInRegistries\\.BLOCK\\.getHolder\\(new ResourceLocation\\(([^;()]*)\\)\\)")
+                to "BuiltInRegistries.BLOCK.getHolder(net.minecraft.resources.ResourceKey.create("
+                        + "net.minecraft.core.registries.Registries.BLOCK, new ResourceLocation($1)))")
+    }
 }
 
 if (vanillaRenames.isNotEmpty()) {

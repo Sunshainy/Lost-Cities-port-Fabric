@@ -10,7 +10,9 @@ import javax.annotation.Nonnull;
 
 /*
  * Сохраняемые данные в 1.21.5 перевели с ручного NBT на Codec + SavedDataType.
- * Ниже обе формы: новая активна с 1.21.5, старая — до неё.
+ * Ниже обе формы: новая активна с 1.21.5, старая — до неё. Внутри старой формы
+ * есть ещё одна граница: в 1.20.5 у save и у десериализатора Factory появился
+ * параметр HolderLookup.Provider.
  */
 import net.minecraft.util.datafix.DataFixTypes;
 
@@ -54,8 +56,11 @@ public class LostData extends SavedData {
         DimensionDataStorage storage = overworld.getDataStorage();
         //? if >=1.21.5 {
         return storage.computeIfAbsent(TYPE);
-        //?} else
-        /*return storage.computeIfAbsent(new Factory<>(LostData::new, LostData::new, DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);*/
+        //?} elif >=1.20.5 {
+        /*return storage.computeIfAbsent(new Factory<>(LostData::new, (tag, provider) -> new LostData(tag), DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);
+        *///?} else {
+        /*return storage.computeIfAbsent(new Factory<>(LostData::new, LostData::new, DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);
+        *///?}
     }
 
     public LostData() {
@@ -67,16 +72,24 @@ public class LostData extends SavedData {
         selectedJson = json;
     }
     //?} else {
-    /*public LostData(CompoundTag tag, HolderLookup.Provider provider) {
+    /*public LostData(CompoundTag tag) {
         selectedProfile = tag.getString("profile");
         selectedJson = tag.getString("json");
     }
 
-    @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+    // save потерял параметр HolderLookup.Provider в 1.20.4 и получил его в 1.20.5.
+    // Ни одному из наших сохранений он не нужен (чистый NBT, без обращений к
+    // реестрам), поэтому объявлены обе перегрузки без @Override: в каждой версии
+    // одна из них закрывает абстрактный метод, вторая просто не используется.
+    // Так тело сохранения не приходится держать в двух копиях.
+    public CompoundTag save(CompoundTag tag) {
         tag.putString("profile", selectedProfile);
         tag.putString("json", selectedJson);
         return tag;
+    }
+
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        return save(tag);
     }
     *///?}
 

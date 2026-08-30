@@ -17,7 +17,9 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
 import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+//? if >=1.20.5 {
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+//?}
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.registries.Registries;
@@ -85,10 +87,15 @@ public class LostCities implements ModInitializer {
         // want the Lost Cities API can access LostCities.lostCitiesImp directly.
     }
 
+    // До 1.20.5 в Fabric не было PayloadTypeRegistry: PacketType.create сам несёт
+    // и идентификатор, и читающую функцию, так что регистрировать кодеки не нужно.
     private void registerNetworking() {
+        //? if >=1.20.5 {
         PayloadTypeRegistry.playS2C().register(PacketReturnProfileToClient.TYPE, PacketReturnProfileToClient.CODEC);
         PayloadTypeRegistry.playC2S().register(PacketRequestProfile.TYPE, PacketRequestProfile.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(PacketRequestProfile.TYPE, (payload, context) -> payload.handle());
+        //?} else
+        /*ServerPlayNetworking.registerGlobalReceiver(PacketRequestProfile.TYPE, (packet, player, sender) -> packet.handle());*/
     }
 
     public static Logger getLogger() {

@@ -97,8 +97,11 @@ public class LostCityWorldGenData extends SavedData {
         DimensionDataStorage storage = overworld.getDataStorage();
         //? if >=1.21.5 {
         return storage.computeIfAbsent(TYPE);
-        //?} else
-        /*return storage.computeIfAbsent(new Factory<>(LostCityWorldGenData::new, LostCityWorldGenData::new, DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);*/
+        //?} elif >=1.20.5 {
+        /*return storage.computeIfAbsent(new Factory<>(LostCityWorldGenData::new, (tag, provider) -> new LostCityWorldGenData(tag), DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);
+        *///?} else {
+        /*return storage.computeIfAbsent(new Factory<>(LostCityWorldGenData::new, LostCityWorldGenData::new, DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);
+        *///?}
     }
 
     public static void initializeNewWorld(ServerLevel level) {
@@ -172,7 +175,7 @@ public class LostCityWorldGenData extends SavedData {
 
 
     //? if <1.21.5 {
-    /*    public LostCityWorldGenData(CompoundTag tag, HolderLookup.Provider provider) {
+    /*    public LostCityWorldGenData(CompoundTag tag) {
         newWorldStreetModes = tag.getBoolean(NEW_WORLD_KEY);
         newWorldHighwayModes = tag.getBoolean(NEW_WORLD_HIGHWAY_KEY);
         CompoundTag modes = tag.getCompound(STREET_MODES_KEY);
@@ -201,8 +204,15 @@ public class LostCityWorldGenData extends SavedData {
         }
     }
 
-    @Override
+    // save потерял параметр HolderLookup.Provider в 1.20.4 и получил его в 1.20.5.
+    // Он не нужен ни одному из наших сохранений (чистый NBT, без обращений к
+    // реестрам), поэтому объявлены обе перегрузки без @Override: в каждой версии
+    // одна закрывает абстрактный метод, вторая просто не используется.
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        return save(tag);
+    }
+
+    public CompoundTag save(CompoundTag tag) {
         tag.putBoolean(NEW_WORLD_KEY, newWorldStreetModes);
         tag.putBoolean(NEW_WORLD_HIGHWAY_KEY, newWorldHighwayModes);
         CompoundTag modes = new CompoundTag();

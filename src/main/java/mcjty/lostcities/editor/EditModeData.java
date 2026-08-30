@@ -72,8 +72,11 @@ public class EditModeData extends SavedData {
         DimensionDataStorage storage = overworld.getDataStorage();
         //? if >=1.21.5 {
         return storage.computeIfAbsent(TYPE);
-        //?} else
-        /*return storage.computeIfAbsent(new Factory<>(EditModeData::new, (compoundTag, provider) -> new EditModeData(compoundTag), DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);*/
+        //?} elif >=1.20.5 {
+        /*return storage.computeIfAbsent(new Factory<>(EditModeData::new, (compoundTag, provider) -> new EditModeData(compoundTag), DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);
+        *///?} else {
+        /*return storage.computeIfAbsent(new Factory<>(EditModeData::new, EditModeData::new, DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);
+        *///?}
     }
 
     private EditModeData() {
@@ -100,8 +103,15 @@ public class EditModeData extends SavedData {
         }
     }
 
-    @Override
+    // save потерял параметр HolderLookup.Provider в 1.20.4 и получил его в 1.20.5.
+    // Он не нужен ни одному из наших сохранений (чистый NBT, без обращений к
+    // реестрам), поэтому объявлены обе перегрузки без @Override: в каждой версии
+    // одна закрывает абстрактный метод, вторая просто не используется.
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        return save(tag);
+    }
+
+    public CompoundTag save(CompoundTag tag) {
         ListTag data = new ListTag();
         partData.forEach((pos, list) -> {
             for (PartData pd : list) {

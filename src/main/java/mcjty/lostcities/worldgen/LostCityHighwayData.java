@@ -135,8 +135,11 @@ public class LostCityHighwayData extends SavedData {
         DimensionDataStorage storage = overworld.getDataStorage();
         //? if >=1.21.5 {
         return storage.computeIfAbsent(TYPE);
-        //?} else
-        /*return storage.computeIfAbsent(new Factory<>(LostCityHighwayData::new, LostCityHighwayData::new, DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);*/
+        //?} elif >=1.20.5 {
+        /*return storage.computeIfAbsent(new Factory<>(LostCityHighwayData::new, (tag, provider) -> new LostCityHighwayData(tag), DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);
+        *///?} else {
+        /*return storage.computeIfAbsent(new Factory<>(LostCityHighwayData::new, LostCityHighwayData::new, DataFixTypes.SAVED_DATA_COMMAND_STORAGE), NAME);
+        *///?}
     }
 
     /**
@@ -262,7 +265,7 @@ public class LostCityHighwayData extends SavedData {
     }
 
     //? if <1.21.5 {
-    /*    public LostCityHighwayData(CompoundTag tag, HolderLookup.Provider provider) {
+    /*    public LostCityHighwayData(CompoundTag tag) {
         if (tag.getInt(VERSION_KEY) != FORMAT_VERSION) {
             return;
         }
@@ -287,8 +290,15 @@ public class LostCityHighwayData extends SavedData {
         }
     }
 
-    @Override
+    // save потерял параметр HolderLookup.Provider в 1.20.4 и получил его в 1.20.5.
+    // Он не нужен ни одному из наших сохранений (чистый NBT, без обращений к
+    // реестрам), поэтому объявлены обе перегрузки без @Override: в каждой версии
+    // одна закрывает абстрактный метод, вторая просто не используется.
     public synchronized CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        return save(tag);
+    }
+
+    public synchronized CompoundTag save(CompoundTag tag) {
         tag.putInt(VERSION_KEY, FORMAT_VERSION);
         CompoundTag dimensionTags = new CompoundTag();
         new TreeMap<>(dimensions).forEach((dimensionId, dimension) -> {

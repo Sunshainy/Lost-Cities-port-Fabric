@@ -80,11 +80,16 @@ public class ForgeEventHandlers {
      * не зависело.
      */
 
+    // LevelData.getSpawnPos() появился в 1.20.5; до него координаты спавна лежали
+    // по отдельности, и getSharedSpawnPos() собирает их из тех же трёх полей.
     private static BlockPos getWorldSpawn(ServerLevel level) {
         //? if >=1.21.9 {
         return level.getRespawnData().pos();
-        //?} else
-        /*return level.getLevelData().getSpawnPos();*/
+        //?} elif >=1.20.5 {
+        /*return level.getLevelData().getSpawnPos();
+        *///?} else {
+        /*return level.getSharedSpawnPos();
+        *///?}
     }
 
     private static void setWorldSpawn(ServerLevel level, @Nullable ServerLevelData settings, BlockPos pos) {
